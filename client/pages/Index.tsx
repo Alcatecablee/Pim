@@ -91,19 +91,57 @@ export default function Index() {
             </button>
           </div>
         ) : (
-          <div>
-            <div className="mb-8">
-              <h2 className="text-3xl font-bold mb-2">All Videos</h2>
-              <p className="text-muted-foreground">
-                {videos.length} video{videos.length !== 1 ? "s" : ""} available
-              </p>
-            </div>
+          <div className="space-y-12">
+            {folders.length > 0 ? (
+              folders.map((folder) => {
+                const folderVideos = videos.filter((v) =>
+                  v.id && folder.id
+                    ? v.id.startsWith(folder.id)
+                    : false
+                );
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-              {videos.map((video) => (
-                <VideoCard key={video.id} video={video} />
-              ))}
-            </div>
+                return (
+                  <div key={folder.id}>
+                    <div className="mb-6">
+                      <h2 className="text-2xl font-bold mb-2">{folder.name}</h2>
+                      {folder.description && (
+                        <p className="text-muted-foreground">{folder.description}</p>
+                      )}
+                      <p className="text-sm text-muted-foreground mt-2">
+                        {folderVideos.length} video{folderVideos.length !== 1 ? "s" : ""}
+                      </p>
+                    </div>
+
+                    {folderVideos.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                        {folderVideos.map((video) => (
+                          <VideoCard key={video.id} video={video} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 bg-secondary/30 rounded-lg">
+                        <p className="text-muted-foreground">No videos in this folder</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <div>
+                <div className="mb-8">
+                  <h2 className="text-3xl font-bold mb-2">All Videos</h2>
+                  <p className="text-muted-foreground">
+                    {videos.length} video{videos.length !== 1 ? "s" : ""} available
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                  {videos.map((video) => (
+                    <VideoCard key={video.id} video={video} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>

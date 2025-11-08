@@ -4,12 +4,12 @@ export const UPNSHARE_API_BASE = "https://upnshare.com/api/v1";
 
 export async function fetchWithAuth(url: string, timeoutMs = 10000) {
   const API_TOKEN = process.env.UPNSHARE_API_TOKEN || "";
-  
+
   console.log(`[fetchWithAuth] Fetching: ${url}`);
-  
+
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  
+
   try {
     const response = await fetch(url, {
       headers: {
@@ -35,7 +35,7 @@ export async function fetchWithAuth(url: string, timeoutMs = 10000) {
     return response.json();
   } catch (error) {
     clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
+    if (error instanceof Error && error.name === "AbortError") {
       throw new Error(`Request timeout after ${timeoutMs}ms`);
     }
     throw error;
@@ -100,14 +100,17 @@ export async function fetchAllVideosFromFolder(
     const firstPageUrl = `${UPNSHARE_API_BASE}/video/folder/${folderId}?page=1&perPage=${perPage}`;
     const firstResponse = await fetchWithAuth(firstPageUrl, 8000);
 
-    const firstVideos = Array.isArray(firstResponse) ? firstResponse : firstResponse.data || [];
+    const firstVideos = Array.isArray(firstResponse)
+      ? firstResponse
+      : firstResponse.data || [];
     const metadata = firstResponse.metadata || {};
 
     if (firstVideos.length > 0) {
       allVideos.push(...firstVideos);
     }
 
-    const maxPage = metadata.maxPage || Math.ceil((metadata.total || 0) / perPage);
+    const maxPage =
+      metadata.maxPage || Math.ceil((metadata.total || 0) / perPage);
 
     // If there's more than one page, fetch remaining pages in parallel
     if (maxPage > 1) {
@@ -116,14 +119,21 @@ export async function fetchAllVideosFromFolder(
       for (let p = 2; p <= maxPage; p++) {
         // Stagger the requests slightly to avoid overwhelming the API
         const promise = (async () => {
-          await new Promise(resolve => setTimeout(resolve, (p - 2) * maxPageDelay));
+          await new Promise((resolve) =>
+            setTimeout(resolve, (p - 2) * maxPageDelay),
+          );
           try {
             const url = `${UPNSHARE_API_BASE}/video/folder/${folderId}?page=${p}&perPage=${perPage}`;
             const response = await fetchWithAuth(url, 8000);
-            const videos = Array.isArray(response) ? response : response.data || [];
+            const videos = Array.isArray(response)
+              ? response
+              : response.data || [];
             return videos;
           } catch (error) {
-            console.error(`Error fetching page ${p} of folder ${folderId}:`, error);
+            console.error(
+              `Error fetching page ${p} of folder ${folderId}:`,
+              error,
+            );
             return [];
           }
         })();
@@ -134,7 +144,7 @@ export async function fetchAllVideosFromFolder(
       // Wait for all pages to complete, but with a reasonable timeout
       const pageResults = await Promise.allSettled(pagePromises);
       for (const result of pageResults) {
-        if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+        if (result.status === "fulfilled" && Array.isArray(result.value)) {
           allVideos.push(...result.value);
         }
       }

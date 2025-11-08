@@ -3,11 +3,11 @@ import { Video, VideoFolder, VideosResponse } from "@shared/api";
 import { performanceMonitor } from "../utils/monitoring";
 import { getFromRedisCache, setRedisCache } from "../utils/redis-cache";
 import { sharedCache } from "../utils/background-refresh";
-import { 
-  UPNSHARE_API_BASE, 
-  fetchWithAuth, 
-  normalizeVideo, 
-  fetchAllVideosFromFolder 
+import {
+  UPNSHARE_API_BASE,
+  fetchWithAuth,
+  normalizeVideo,
+  fetchAllVideosFromFolder,
 } from "../utils/upnshare";
 
 const API_TOKEN = process.env.UPNSHARE_API_TOKEN || "";
@@ -55,13 +55,13 @@ export const handleGetVideos: RequestHandler = async (req, res) => {
     if (sharedCache && Date.now() - sharedCache.timestamp < CACHE_TTL) {
       console.log("✅ Returning background refresh cached video data");
       performanceMonitor.recordCacheHit();
-      
+
       // Update in-memory cache for next request
       cache = {
         data: sharedCache.data,
         timestamp: sharedCache.timestamp,
       };
-      
+
       performanceMonitor.logStats();
       return res.json(sharedCache.data);
     }
@@ -71,20 +71,20 @@ export const handleGetVideos: RequestHandler = async (req, res) => {
     if (redisData) {
       console.log("✅ Returning Redis cached video data");
       performanceMonitor.recordCacheHit();
-      
+
       // Update in-memory cache for next request
       cache = {
         data: redisData,
         timestamp: Date.now(),
       };
-      
+
       performanceMonitor.logStats();
       return res.json(redisData);
     }
 
     performanceMonitor.recordCacheMiss();
     console.log("Fetching fresh video data from UPNshare...");
-    
+
     // Wrap the entire fetching logic in a timeout promise
     const fetchPromise = (async () => {
       const allVideos: Video[] = [];
@@ -125,7 +125,9 @@ export const handleGetVideos: RequestHandler = async (req, res) => {
           // Check if we're running out of time before starting
           const timeRemaining = GLOBAL_TIMEOUT - (Date.now() - startTime);
           if (timeRemaining < 4000) {
-            console.log(`⏭️  Skipping ${folder.name} - running out of time (${timeRemaining}ms remaining)`);
+            console.log(
+              `⏭️  Skipping ${folder.name} - running out of time (${timeRemaining}ms remaining)`,
+            );
             return [];
           }
 
@@ -133,35 +135,53 @@ export const handleGetVideos: RequestHandler = async (req, res) => {
           const batchIndex = Math.floor(index / MAX_CONCURRENT);
           const delayMs = batchIndex * 50; // Small stagger between batches
           if (delayMs > 0) {
-            await new Promise(resolve => setTimeout(resolve, delayMs));
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
           }
 
           // Check time remaining before fetching
           const timeBeforeFetch = GLOBAL_TIMEOUT - (Date.now() - startTime);
-          const folderFetchTimeout = Math.min(FOLDER_TIMEOUT, Math.max(1000, timeBeforeFetch - 1000));
+          const folderFetchTimeout = Math.min(
+            FOLDER_TIMEOUT,
+            Math.max(1000, timeBeforeFetch - 1000),
+          );
 
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), folderFetchTimeout);
+          const timeoutId = setTimeout(
+            () => controller.abort(),
+            folderFetchTimeout,
+          );
 
           const result = await fetchAllVideosFromFolder(folder.id);
           clearTimeout(timeoutId);
 
           const folderDuration = Date.now() - folderStartTime;
-          performanceMonitor.recordFolderFetch(folder.id, folder.name, folderDuration);
+          performanceMonitor.recordFolderFetch(
+            folder.id,
+            folder.name,
+            folderDuration,
+          );
 
           if (result.error) {
-            console.warn(`  ⚠️  Partial data from ${folder.name}: ${result.error}`);
+            console.warn(
+              `  ⚠️  Partial data from ${folder.name}: ${result.error}`,
+            );
           }
 
-          console.log(`  ✓ Found ${result.videos.length} videos in ${folder.name} (${folderDuration}ms)`);
+          console.log(
+            `  ✓ Found ${result.videos.length} videos in ${folder.name} (${folderDuration}ms)`,
+          );
 
-          return result.videos.map((video: any) => normalizeVideo(video, folder.id));
+          return result.videos.map((video: any) =>
+            normalizeVideo(video, folder.id),
+          );
         } catch (error) {
           const folderDuration = Date.now() - folderStartTime;
 
-          if (error instanceof Error && error.message.includes('timeout')) {
+          if (error instanceof Error && error.message.includes("timeout")) {
             performanceMonitor.recordTimeout();
-            console.error(`  ⏱️  Timeout fetching ${folder.name} after ${folderDuration}ms`);
+            console.error(
+              `  ⏱️  Timeout fetching ${folder.name} after ${folderDuration}ms`,
+            );
           } else {
             performanceMonitor.recordError(`folder_fetch_${folder.id}`);
             console.error(`  ❌ Error fetching ${folder.name}:`, error);
@@ -174,21 +194,24 @@ export const handleGetVideos: RequestHandler = async (req, res) => {
       // Wait for all folder requests to complete, but don't wait longer than GLOBAL_TIMEOUT
       let videoArrays: any[] = [];
       try {
-        videoArrays = await Promise.allSettled(folderPromises).then(results =>
+        videoArrays = await Promise.allSettled(folderPromises).then((results) =>
           results.map((result, index) => {
-            if (result.status === 'fulfilled') {
+            if (result.status === "fulfilled") {
               return result.value || [];
             } else {
-              console.error(`  ❌ Folder ${index} promise rejected:`, result.reason);
+              console.error(
+                `  ❌ Folder ${index} promise rejected:`,
+                result.reason,
+              );
               return [];
             }
-          })
+          }),
         );
       } catch (error) {
         console.error("Error waiting for folder promises:", error);
         videoArrays = [];
       }
-      
+
       // Flatten all videos into single array
       for (const videos of videoArrays) {
         allVideos.push(...videos);
@@ -201,8 +224,11 @@ export const handleGetVideos: RequestHandler = async (req, res) => {
     const { allVideos, allFolders } = await Promise.race([
       fetchPromise,
       new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Global timeout reached')), GLOBAL_TIMEOUT - 1000)
-      })
+        setTimeout(
+          () => reject(new Error("Global timeout reached")),
+          GLOBAL_TIMEOUT - 1000,
+        );
+      }),
     ]);
 
     const response: VideosResponse = {
@@ -216,27 +242,31 @@ export const handleGetVideos: RequestHandler = async (req, res) => {
       data: response,
       timestamp: Date.now(),
     };
-    
+
     // Update Redis cache (fire and forget, don't wait)
-    setRedisCache(response).catch(err => 
-      console.error("Failed to update Redis cache:", err)
+    setRedisCache(response).catch((err) =>
+      console.error("Failed to update Redis cache:", err),
     );
 
     const duration = Date.now() - startTime;
-    console.log(`✅ Total videos fetched: ${allVideos.length} in ${duration}ms`);
-    
+    console.log(
+      `✅ Total videos fetched: ${allVideos.length} in ${duration}ms`,
+    );
+
     performanceMonitor.logStats();
-    
+
     const alertCheck = performanceMonitor.shouldAlert();
     if (alertCheck.alert) {
       console.warn(`⚠️  PERFORMANCE ALERT: ${alertCheck.reason}`);
     }
-    
+
     res.json(response);
   } catch (error) {
     // If we timeout, try to return stale cache if available
-    if (error instanceof Error && error.message === 'Global timeout reached') {
-      console.error("[handleGetVideos] ⏱️  Global timeout reached, checking for stale cache");
+    if (error instanceof Error && error.message === "Global timeout reached") {
+      console.error(
+        "[handleGetVideos] ⏱️  Global timeout reached, checking for stale cache",
+      );
       performanceMonitor.recordTimeout();
       if (cache) {
         console.log("Returning stale cached data due to timeout");
@@ -266,11 +296,11 @@ export const handleGetVideos: RequestHandler = async (req, res) => {
 export const handleGetVideosPaginated: RequestHandler = async (req, res) => {
   try {
     performanceMonitor.recordRequest();
-    
+
     const page = parseInt(req.query.page as string) || 1;
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
     const folderId = req.query.folder as string;
-    
+
     if (!API_TOKEN) {
       performanceMonitor.recordError("missing_api_token");
       return res.status(500).json({
@@ -282,13 +312,13 @@ export const handleGetVideosPaginated: RequestHandler = async (req, res) => {
     const paginateFromCache = (cacheData: VideosResponse) => {
       let filteredVideos = cacheData.videos;
       if (folderId) {
-        filteredVideos = filteredVideos.filter(v => v.folder_id === folderId);
+        filteredVideos = filteredVideos.filter((v) => v.folder_id === folderId);
       }
-      
+
       const startIndex = (page - 1) * limit;
       const endIndex = startIndex + limit;
       const paginatedVideos = filteredVideos.slice(startIndex, endIndex);
-      
+
       return {
         videos: paginatedVideos,
         folders: cacheData.folders,
@@ -324,15 +354,20 @@ export const handleGetVideosPaginated: RequestHandler = async (req, res) => {
     }
 
     performanceMonitor.recordCacheMiss();
-    
+
     // No cache available - fetch all data to populate cache
     console.log("Pagination: No cache available, fetching all data...");
     const allVideos: Video[] = [];
     const allFolders: VideoFolder[] = [];
-    
-    const foldersData = await fetchWithAuth(`${UPNSHARE_API_BASE}/video/folder`, 5000);
-    const folders = Array.isArray(foldersData) ? foldersData : foldersData.data || [];
-    
+
+    const foldersData = await fetchWithAuth(
+      `${UPNSHARE_API_BASE}/video/folder`,
+      5000,
+    );
+    const folders = Array.isArray(foldersData)
+      ? foldersData
+      : foldersData.data || [];
+
     for (const folder of folders) {
       allFolders.push({
         id: folder.id,
@@ -343,23 +378,29 @@ export const handleGetVideosPaginated: RequestHandler = async (req, res) => {
         updated_at: folder.updated_at,
       });
     }
-    
+
     // Fetch ALL videos from ALL folders to build accurate pagination
     const folderPromises = folders.map(async (folder: any) => {
       const folderStartTime = Date.now();
       try {
         const result = await fetchAllVideosFromFolder(folder.id);
-        
+
         const folderDuration = Date.now() - folderStartTime;
-        performanceMonitor.recordFolderFetch(folder.id, folder.name, folderDuration);
-        
+        performanceMonitor.recordFolderFetch(
+          folder.id,
+          folder.name,
+          folderDuration,
+        );
+
         if (result.error) {
           console.warn(`⚠️ Partial data from ${folder.name}: ${result.error}`);
         }
-        
-        return result.videos.map((video: any) => normalizeVideo(video, folder.id));
+
+        return result.videos.map((video: any) =>
+          normalizeVideo(video, folder.id),
+        );
       } catch (error) {
-        if (error instanceof Error && error.message.includes('timeout')) {
+        if (error instanceof Error && error.message.includes("timeout")) {
           performanceMonitor.recordTimeout();
         } else {
           performanceMonitor.recordError(`folder_fetch_${folder.id}`);
@@ -367,28 +408,33 @@ export const handleGetVideosPaginated: RequestHandler = async (req, res) => {
         return [];
       }
     });
-    
+
     const videoArrays = await Promise.all(folderPromises);
     for (const videos of videoArrays) {
       allVideos.push(...videos);
     }
-    
+
     const fullResponse: VideosResponse = {
       videos: allVideos,
       folders: allFolders,
       total: allVideos.length,
     };
-    
+
     // Update cache
     cache = { data: fullResponse, timestamp: Date.now() };
-    setRedisCache(fullResponse).catch(err => console.error("Failed to update Redis:", err));
-    
+    setRedisCache(fullResponse).catch((err) =>
+      console.error("Failed to update Redis:", err),
+    );
+
     // Return paginated result from full dataset
     res.json(paginateFromCache(fullResponse));
   } catch (error) {
     performanceMonitor.recordError("pagination_error");
     res.status(500).json({
-      error: error instanceof Error ? error.message : "Failed to fetch paginated videos",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch paginated videos",
     });
   }
 };

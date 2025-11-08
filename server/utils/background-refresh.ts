@@ -1,10 +1,10 @@
 import { Video, VideoFolder, VideosResponse } from "@shared/api";
 import { setRedisCache } from "./redis-cache";
-import { 
-  UPNSHARE_API_BASE, 
-  fetchWithAuth, 
+import {
+  UPNSHARE_API_BASE,
+  fetchWithAuth,
   normalizeVideo,
-  fetchAllVideosFromFolder 
+  fetchAllVideosFromFolder,
 } from "./upnshare";
 
 const REFRESH_INTERVAL = 5 * 60 * 1000;
@@ -20,9 +20,13 @@ interface CacheEntry {
 
 export let sharedCache: CacheEntry | null = null;
 
-export async function refreshVideoCache(): Promise<{ success: boolean; message: string; videosCount?: number }> {
+export async function refreshVideoCache(): Promise<{
+  success: boolean;
+  message: string;
+  videosCount?: number;
+}> {
   const API_TOKEN = process.env.UPNSHARE_API_TOKEN || "";
-  
+
   if (!API_TOKEN) {
     return { success: false, message: "UPNSHARE_API_TOKEN not set" };
   }
@@ -36,12 +40,17 @@ export async function refreshVideoCache(): Promise<{ success: boolean; message: 
 
   try {
     console.log("🔄 Background refresh: Starting...");
-    
+
     const allVideos: Video[] = [];
     const allFolders: VideoFolder[] = [];
 
-    const foldersData = await fetchWithAuth(`${UPNSHARE_API_BASE}/video/folder`, 5000);
-    const folders = Array.isArray(foldersData) ? foldersData : foldersData.data || [];
+    const foldersData = await fetchWithAuth(
+      `${UPNSHARE_API_BASE}/video/folder`,
+      5000,
+    );
+    const folders = Array.isArray(foldersData)
+      ? foldersData
+      : foldersData.data || [];
 
     for (const folder of folders) {
       allFolders.push({
@@ -65,35 +74,45 @@ export async function refreshVideoCache(): Promise<{ success: boolean; message: 
         const batchIndex = Math.floor(index / MAX_CONCURRENT);
         const delayMs = batchIndex * 100;
         if (delayMs > 0) {
-          await new Promise(resolve => setTimeout(resolve, delayMs));
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
 
         const result = await fetchAllVideosFromFolder(folder.id);
 
         if (result.error) {
-          console.warn(`  ⚠️  Partial data from ${folder.name}: ${result.error}`);
+          console.warn(
+            `  ⚠️  Partial data from ${folder.name}: ${result.error}`,
+          );
         }
 
-        console.log(`  ✓ Fetched ${result.videos.length} videos from ${folder.name}`);
+        console.log(
+          `  ✓ Fetched ${result.videos.length} videos from ${folder.name}`,
+        );
 
-        return result.videos.map((video: any) => normalizeVideo(video, folder.id));
+        return result.videos.map((video: any) =>
+          normalizeVideo(video, folder.id),
+        );
       } catch (error) {
         console.error(`  ❌ Error fetching ${folder.name}:`, error);
         return [];
       }
     });
 
-    const videoArrays = await Promise.allSettled(folderPromises).then(results =>
-      results.map((result, index) => {
-        if (result.status === 'fulfilled') {
-          return result.value || [];
-        } else {
-          console.error(`  ❌ Folder ${index} promise rejected:`, result.reason);
-          return [];
-        }
-      })
+    const videoArrays = await Promise.allSettled(folderPromises).then(
+      (results) =>
+        results.map((result, index) => {
+          if (result.status === "fulfilled") {
+            return result.value || [];
+          } else {
+            console.error(
+              `  ❌ Folder ${index} promise rejected:`,
+              result.reason,
+            );
+            return [];
+          }
+        }),
     );
-    
+
     for (const videos of videoArrays) {
       allVideos.push(...videos);
     }
@@ -113,9 +132,11 @@ export async function refreshVideoCache(): Promise<{ success: boolean; message: 
 
     const duration = Date.now() - startTime;
     lastRefreshTime = Date.now();
-    
-    console.log(`✅ Background refresh: Completed in ${duration}ms (${allVideos.length} videos)`);
-    
+
+    console.log(
+      `✅ Background refresh: Completed in ${duration}ms (${allVideos.length} videos)`,
+    );
+
     return {
       success: true,
       message: `Refreshed ${allVideos.length} videos in ${duration}ms`,
@@ -138,10 +159,12 @@ export function startBackgroundRefresh() {
     return;
   }
 
-  console.log(`🔄 Starting background refresh (interval: ${REFRESH_INTERVAL / 1000}s)`);
-  
+  console.log(
+    `🔄 Starting background refresh (interval: ${REFRESH_INTERVAL / 1000}s)`,
+  );
+
   refreshVideoCache();
-  
+
   refreshTimer = setInterval(() => {
     refreshVideoCache();
   }, REFRESH_INTERVAL);
@@ -160,6 +183,8 @@ export function getRefreshStatus() {
     isRunning: refreshTimer !== null,
     isRefreshing,
     lastRefreshTime,
-    nextRefreshIn: refreshTimer ? REFRESH_INTERVAL - (Date.now() - lastRefreshTime) : null,
+    nextRefreshIn: refreshTimer
+      ? REFRESH_INTERVAL - (Date.now() - lastRefreshTime)
+      : null,
   };
 }

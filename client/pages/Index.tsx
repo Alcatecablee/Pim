@@ -36,11 +36,11 @@ export default function Index() {
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
-      
+
       const response = await fetch("/api/videos", {
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
 
       if (!response.ok) {
@@ -63,21 +63,28 @@ export default function Index() {
       toast.success(`Loaded ${data.videos.length} videos successfully`);
       setLoading(false);
     } catch (err) {
-      const isAbortError = err instanceof Error && (
-        err.name === 'AbortError' ||
-        err.message.includes('aborted') ||
-        err.message.includes('timeout') ||
-        err.message.includes('fetch')
-      );
+      const isAbortError =
+        err instanceof Error &&
+        (err.name === "AbortError" ||
+          err.message.includes("aborted") ||
+          err.message.includes("timeout") ||
+          err.message.includes("fetch"));
 
       if (retryCount < MAX_RETRIES && isAbortError) {
         const retryNum = retryCount + 1;
-        toast.info(`Connection issue, retrying... (${retryNum}/${MAX_RETRIES})`);
-        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * retryNum)); // Increase delay with each retry
+        toast.info(
+          `Connection issue, retrying... (${retryNum}/${MAX_RETRIES})`,
+        );
+        await new Promise((resolve) =>
+          setTimeout(resolve, RETRY_DELAY * retryNum),
+        ); // Increase delay with each retry
         return fetchVideos(retryCount + 1);
       }
 
-      const errorMessage = err instanceof Error ? err.message : "An error occurred while fetching videos";
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "An error occurred while fetching videos";
       setError(errorMessage);
       setLoading(false);
       toast.error(errorMessage);
@@ -93,7 +100,7 @@ export default function Index() {
       filtered = filtered.filter(
         (video) =>
           video.title.toLowerCase().includes(query) ||
-          video.description?.toLowerCase().includes(query)
+          video.description?.toLowerCase().includes(query),
       );
     }
 
@@ -101,36 +108,38 @@ export default function Index() {
       filtered = filtered.filter((video) => video.folder_id === selectedFolder);
     }
 
-    return filtered.sort((a, b) => 
-      new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+    return filtered.sort(
+      (a, b) =>
+        new Date(b.created_at || 0).getTime() -
+        new Date(a.created_at || 0).getTime(),
     );
   }, [videos, searchQuery, selectedFolder]);
 
   const getFolderById = (folderId: string) => {
-    return folders.find(f => f.id === folderId);
+    return folders.find((f) => f.id === folderId);
   };
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0f0f0f]">
-      <Header 
+      <Header
         onMenuClick={() => setSidebarOpen(!sidebarOpen)}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
       />
-      
+
       <div className="flex">
-        <Sidebar 
+        <Sidebar
           isOpen={sidebarOpen}
           folders={folders}
           selectedFolder={selectedFolder}
           onFolderSelect={setSelectedFolder}
           onClose={() => setSidebarOpen(false)}
         />
-        
-        <main 
+
+        <main
           className={cn(
             "flex-1 transition-all duration-300 pt-6",
-            sidebarOpen ? "lg:ml-60" : "lg:ml-[72px]"
+            sidebarOpen ? "lg:ml-60" : "lg:ml-[72px]",
           )}
         >
           <div className="px-6 max-w-[2000px] mx-auto">
@@ -141,7 +150,9 @@ export default function Index() {
                   <h3 className="font-semibold text-red-800 dark:text-red-300 mb-1">
                     Error Loading Videos
                   </h3>
-                  <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+                  <p className="text-sm text-red-700 dark:text-red-400">
+                    {error}
+                  </p>
                   <button
                     onClick={() => fetchVideos()}
                     className="mt-3 text-sm font-medium text-red-700 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 transition-colors"
@@ -174,7 +185,9 @@ export default function Index() {
                   <AlertCircle className="w-16 h-16 text-gray-400 dark:text-gray-600" />
                 </div>
                 <h2 className="text-2xl font-semibold mb-2 text-gray-900 dark:text-gray-100">
-                  {searchQuery || selectedFolder !== "all" ? "No videos found" : "No videos available"}
+                  {searchQuery || selectedFolder !== "all"
+                    ? "No videos found"
+                    : "No videos available"}
                 </h2>
                 <p className="text-gray-600 dark:text-gray-400 mb-6 text-center max-w-md">
                   {searchQuery || selectedFolder !== "all"
@@ -199,9 +212,11 @@ export default function Index() {
                 {(searchQuery || selectedFolder !== "all") && (
                   <div className="mb-6 flex items-center justify-between">
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {filteredVideos.length} {filteredVideos.length === 1 ? 'result' : 'results'}
+                      {filteredVideos.length}{" "}
+                      {filteredVideos.length === 1 ? "result" : "results"}
                       {searchQuery && ` for "${searchQuery}"`}
-                      {selectedFolder !== "all" && ` in ${getFolderById(selectedFolder)?.name}`}
+                      {selectedFolder !== "all" &&
+                        ` in ${getFolderById(selectedFolder)?.name}`}
                     </p>
                     <button
                       onClick={() => {
@@ -218,8 +233,8 @@ export default function Index() {
                 {/* Video Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-4 gap-y-8">
                   {filteredVideos.map((video) => (
-                    <VideoCard 
-                      key={video.id} 
+                    <VideoCard
+                      key={video.id}
                       video={video}
                       folder={getFolderById(video.folder_id)}
                     />

@@ -27,6 +27,7 @@ export default function Index() {
 
       const data = (await response.json()) as VideosResponse;
       setVideos(data.videos);
+      setFolders(data.folders);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "An error occurred while fetching videos";
       setError(errorMessage);

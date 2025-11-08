@@ -33,8 +33,11 @@ export default function Index() {
     const RETRY_DELAY = 2000; // 2 seconds
     
     try {
-      setLoading(true);
-      setError(null);
+      // Only set loading on first attempt
+      if (retryCount === 0) {
+        setLoading(true);
+        setError(null);
+      }
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
@@ -68,6 +71,9 @@ export default function Index() {
       setVideos(data.videos);
       setFolders(data.folders);
       toast.success(`Loaded ${data.videos.length} videos successfully`);
+      
+      // Only clear loading on successful fetch
+      setLoading(false);
     } catch (err) {
       // Retry logic for network errors
       if (retryCount < MAX_RETRIES && err instanceof Error && 
@@ -75,18 +81,19 @@ export default function Index() {
         console.log(`Retrying... Attempt ${retryCount + 1} of ${MAX_RETRIES}`);
         toast.info(`Connection issue, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        // Loading state stays true during retry
         return fetchVideos(retryCount + 1);
       }
       
+      // Only on final failure, set error and clear loading
       const errorMessage =
         err instanceof Error
           ? err.message
           : "An error occurred while fetching videos";
       setError(errorMessage);
+      setLoading(false);
       toast.error(errorMessage);
       console.error("Error fetching videos:", err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -259,7 +266,7 @@ export default function Index() {
               </h3>
               <p className="text-sm text-destructive/80">{error}</p>
               <button
-                onClick={fetchVideos}
+                onClick={() => fetchVideos()}
                 className="mt-3 text-sm font-medium text-destructive hover:text-destructive/80 transition-colors"
               >
                 Try Again

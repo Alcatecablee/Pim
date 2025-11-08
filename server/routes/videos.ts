@@ -213,16 +213,38 @@ export const handleGetVideos: RequestHandler = async (req, res) => {
       return { allVideos, allFolders };
     })();
 
-    // Execute the fetch with a hard timeout
-    const { allVideos, allFolders } = await Promise.race([
-      fetchPromise,
-      new Promise<never>((_, reject) => {
-        setTimeout(
-          () => reject(new Error("Global timeout reached")),
-          GLOBAL_TIMEOUT - 1000,
-        );
-      }),
-    ]);
+    // Execute the fetch with a hard timeout - return partial results if timeout
+    let allVideos: Video[] = [];
+    let allFolders: VideoFolder[] = [];
+
+    try {
+      const result = await Promise.race([
+        fetchPromise,
+        new Promise<never>((_, reject) => {
+          setTimeout(
+            () => reject(new Error("Global timeout reached")),
+            GLOBAL_TIMEOUT - 2000, // Leave 2s buffer for response handling
+          );
+        }),
+      ]);
+      allVideos = result.allVideos;
+      allFolders = result.allFolders;
+    } catch (timeoutError) {
+      if (timeoutError instanceof Error && timeoutError.message === "Global timeout reached") {
+        console.warn("[handleGetVideos] ⏱️  Timeout reached, returning partial/cached data");
+        // Try to return what we have so far - better than failing
+        if (cache && Date.now() - cache.timestamp < CACHE_TTL * 2) {
+          // Even if cache is stale, return it rather than fail
+          performanceMonitor.logStats();
+          return res.json(cache.data);
+        }
+        // Return empty result rather than error - client can retry
+        allVideos = [];
+        allFolders = [];
+      } else {
+        throw timeoutError;
+      }
+    }
 
     const response: VideosResponse = {
       videos: allVideos,

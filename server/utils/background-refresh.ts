@@ -54,17 +54,28 @@ export async function refreshVideoCache(): Promise<{ success: boolean; message: 
       });
     }
 
-    // Fetch ALL pages from each folder using shared helper
-    const folderPromises = folders.map(async (folder: any) => {
+    // Fetch ALL pages from each folder using shared helper with concurrency limiting
+    const MAX_CONCURRENT = 2; // Limit concurrent requests
+    const FOLDER_TIMEOUT = 10000; // 10 second timeout per folder
+    const REFRESH_TIMEOUT = 4 * 60 * 1000; // 4 minute overall timeout
+
+    const folderPromises = folders.map(async (folder: any, index: number) => {
       try {
+        // Add staggered delay based on batch
+        const batchIndex = Math.floor(index / MAX_CONCURRENT);
+        const delayMs = batchIndex * 100;
+        if (delayMs > 0) {
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+
         const result = await fetchAllVideosFromFolder(folder.id);
-        
+
         if (result.error) {
           console.warn(`  ⚠️  Partial data from ${folder.name}: ${result.error}`);
         }
-        
+
         console.log(`  ✓ Fetched ${result.videos.length} videos from ${folder.name}`);
-        
+
         return result.videos.map((video: any) => normalizeVideo(video, folder.id));
       } catch (error) {
         console.error(`  ❌ Error fetching ${folder.name}:`, error);
@@ -72,7 +83,16 @@ export async function refreshVideoCache(): Promise<{ success: boolean; message: 
       }
     });
 
-    const videoArrays = await Promise.all(folderPromises);
+    const videoArrays = await Promise.allSettled(folderPromises).then(results =>
+      results.map((result, index) => {
+        if (result.status === 'fulfilled') {
+          return result.value || [];
+        } else {
+          console.error(`  ❌ Folder ${index} promise rejected:`, result.reason);
+          return [];
+        }
+      })
+    );
     
     for (const videos of videoArrays) {
       allVideos.push(...videos);

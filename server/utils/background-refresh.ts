@@ -1,7 +1,12 @@
 import { Video, VideoFolder, VideosResponse } from "@shared/api";
 import { setRedisCache } from "./redis-cache";
+import { 
+  UPNSHARE_API_BASE, 
+  fetchWithAuth, 
+  normalizeVideo,
+  fetchAllVideosFromFolder 
+} from "./upnshare";
 
-const UPNSHARE_API_BASE = "https://upnshare.com/api/v1";
 const REFRESH_INTERVAL = 5 * 60 * 1000;
 
 let refreshTimer: NodeJS.Timeout | null = null;
@@ -14,75 +19,6 @@ interface CacheEntry {
 }
 
 export let sharedCache: CacheEntry | null = null;
-
-async function fetchWithAuth(url: string, timeoutMs = 10000) {
-  const API_TOKEN = process.env.UPNSHARE_API_TOKEN || "";
-  
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  
-  try {
-    const response = await fetch(url, {
-      headers: {
-        "api-token": API_TOKEN,
-        "Content-Type": "application/json",
-      },
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`UPNshare API error: ${response.status} ${response.statusText}`);
-    }
-
-    return response.json();
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(`Request timeout after ${timeoutMs}ms`);
-    }
-    throw error;
-  }
-}
-
-function normalizeVideo(video: any, folderId: string): Video {
-  let assetPath: string | undefined;
-  let posterUrl: string | undefined;
-
-  if (video.poster) {
-    const assetUrl = video.assetUrl || "https://assets.upns.net";
-
-    if (video.poster.startsWith("/")) {
-      posterUrl = assetUrl + video.poster;
-    } else {
-      posterUrl = video.poster;
-    }
-
-    const pathMatch = posterUrl.match(
-      /^(https?:\/\/[^/]+)?(\/.*)\/(poster|preview|[^/]+\.(png|jpg|jpeg|webp))$/i,
-    );
-    if (pathMatch) {
-      assetPath = pathMatch[2];
-    }
-  }
-
-  return {
-    id: video.id,
-    title: (video.title || video.name || `Video ${video.id}`).trim(),
-    description: video.description?.trim() || undefined,
-    duration: video.duration || 0,
-    thumbnail: video.thumbnail || undefined,
-    poster: posterUrl || video.thumbnail || undefined,
-    assetUrl: video.assetUrl || "https://assets.upns.net",
-    assetPath: assetPath,
-    created_at: video.created_at || video.createdAt || undefined,
-    updated_at: video.updated_at || video.updatedAt || undefined,
-    views: video.views || video.play || 0,
-    size: video.size || undefined,
-    folder_id: folderId,
-  };
-}
 
 export async function refreshVideoCache(): Promise<{ success: boolean; message: string; videosCount?: number }> {
   const API_TOKEN = process.env.UPNSHARE_API_TOKEN || "";
@@ -118,14 +54,18 @@ export async function refreshVideoCache(): Promise<{ success: boolean; message: 
       });
     }
 
-    const MAX_VIDEOS_PER_FOLDER = 100;
+    // Fetch ALL pages from each folder using shared helper
     const folderPromises = folders.map(async (folder: any) => {
       try {
-        const url = `${UPNSHARE_API_BASE}/video/folder/${folder.id}?page=1&perPage=${MAX_VIDEOS_PER_FOLDER}`;
-        const response = await fetchWithAuth(url, 4000);
-        const videos = Array.isArray(response) ? response : response.data || [];
+        const result = await fetchAllVideosFromFolder(folder.id);
         
-        return videos.map((video: any) => normalizeVideo(video, folder.id));
+        if (result.error) {
+          console.warn(`  ⚠️  Partial data from ${folder.name}: ${result.error}`);
+        }
+        
+        console.log(`  ✓ Fetched ${result.videos.length} videos from ${folder.name}`);
+        
+        return result.videos.map((video: any) => normalizeVideo(video, folder.id));
       } catch (error) {
         console.error(`  ❌ Error fetching ${folder.name}:`, error);
         return [];

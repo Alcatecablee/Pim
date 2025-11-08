@@ -3,8 +3,13 @@ import { Video, VideoFolder, VideosResponse } from "@shared/api";
 import { performanceMonitor } from "../utils/monitoring";
 import { getFromRedisCache, setRedisCache } from "../utils/redis-cache";
 import { sharedCache } from "../utils/background-refresh";
+import { 
+  UPNSHARE_API_BASE, 
+  fetchWithAuth, 
+  normalizeVideo, 
+  fetchAllVideosFromFolder 
+} from "../utils/upnshare";
 
-const UPNSHARE_API_BASE = "https://upnshare.com/api/v1";
 const API_TOKEN = process.env.UPNSHARE_API_TOKEN || "";
 
 // In-memory cache with TTL
@@ -15,144 +20,6 @@ interface CacheEntry {
 
 let cache: CacheEntry | null = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-async function fetchWithAuth(url: string, timeoutMs = 10000) {
-  // UPNshare uses api-token header (with hyphen, not underscore)
-  console.log(`[fetchWithAuth] Fetching: ${url}`);
-  
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-  
-  try {
-    const response = await fetch(url, {
-      headers: {
-        "api-token": API_TOKEN,
-        "Content-Type": "application/json",
-      },
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(
-        `[fetchWithAuth] API error: ${response.status} ${response.statusText}`,
-      );
-      console.error(`[fetchWithAuth] Error response body:`, errorText);
-      throw new Error(
-        `UPNshare API error: ${response.status} ${response.statusText}`,
-      );
-    }
-
-    return response.json();
-  } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(`Request timeout after ${timeoutMs}ms`);
-    }
-    throw error;
-  }
-}
-
-// Normalize video metadata
-function normalizeVideo(video: any, folderId: string): Video {
-  // Log the first video to understand the data structure
-  if (!loggedFirst) {
-    loggedFirst = true;
-    console.log("Sample video from API:", JSON.stringify(video, null, 2));
-  }
-
-  // Extract asset path from poster URL and construct full poster URL
-  // e.g., "/ilwWC4Mp5MVI4.../poster.png" -> "/ilwWC4Mp5MVI4..."
-  let assetPath: string | undefined;
-  let posterUrl: string | undefined;
-
-  if (video.poster) {
-    const assetUrl = video.assetUrl || "https://assets.upns.net";
-
-    // If poster is a relative path, make it absolute
-    if (video.poster.startsWith("/")) {
-      posterUrl = assetUrl + video.poster;
-    } else {
-      posterUrl = video.poster;
-    }
-
-    // Extract asset path by removing the filename
-    // e.g., "/ilwWC4Mp5MVI4XuXNUu0tQ/db/j3t1qkoj/3iphd/poster.png" -> "/ilwWC4Mp5MVI4XuXNUu0tQ/db/j3t1qkoj/3iphd"
-    const pathMatch = posterUrl.match(
-      /^(https?:\/\/[^/]+)?(\/.*)\/(poster|preview|[^/]+\.(png|jpg|jpeg|webp))$/i,
-    );
-    if (pathMatch) {
-      assetPath = pathMatch[2]; // Get the path without filename
-    }
-  }
-
-  return {
-    id: video.id,
-    title: (video.title || video.name || `Video ${video.id}`).trim(),
-    description: video.description?.trim() || undefined,
-    duration: video.duration || 0,
-    thumbnail: video.thumbnail || undefined,
-    poster: posterUrl || video.thumbnail || undefined,
-    assetUrl: video.assetUrl || "https://assets.upns.net",
-    assetPath: assetPath,
-    created_at: video.created_at || video.createdAt || undefined,
-    updated_at: video.updated_at || video.updatedAt || undefined,
-    views: video.views || video.play || 0,
-    size: video.size || undefined,
-    folder_id: folderId,
-  };
-}
-
-let loggedFirst = false;
-
-// Fetch all videos from a folder with pagination
-async function fetchAllVideosFromFolder(
-  folderId: string,
-): Promise<{ videos: any[]; error?: string }> {
-  const allVideos: any[] = [];
-  let page = 1;
-  const perPage = 100; // Fetch 100 per page
-
-  try {
-    while (true) {
-      const url = `${UPNSHARE_API_BASE}/video/folder/${folderId}?page=${page}&perPage=${perPage}`;
-      const response = await fetchWithAuth(url);
-
-      // Handle the paginated response format: { data: [...], metadata: {...} }
-      const videos = Array.isArray(response) ? response : response.data || [];
-
-      const metadata = response.metadata || {};
-
-      if (videos.length > 0) {
-        allVideos.push(...videos);
-      }
-
-      // Check if there are more pages using maxPage from metadata
-      const currentPage = metadata.currentPage || page;
-      const maxPage =
-        metadata.maxPage || Math.ceil((metadata.total || 0) / perPage);
-
-      if (!videos.length || currentPage >= maxPage) {
-        break;
-      }
-
-      page++;
-
-      // Add delay between page requests to avoid rate limiting
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    }
-
-    return { videos: allVideos };
-  } catch (error) {
-    console.error(`Error fetching videos from folder ${folderId}:`, error);
-    return {
-      videos: allVideos,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
-  }
-}
 
 export const handleGetVideos: RequestHandler = async (req, res) => {
   const startTime = Date.now();
@@ -235,10 +102,6 @@ export const handleGetVideos: RequestHandler = async (req, res) => {
 
       console.log(`Found ${folders.length} folders`);
 
-      // Fetch only first page of videos from each folder (limit 20 per folder for speed)
-      const MAX_VIDEOS_PER_FOLDER = 20;
-      const TIMEOUT_PER_FOLDER = 4000; // Reduced to 4 seconds per folder request
-      
       // Process folders and prepare folder metadata
       for (const folder of folders) {
         allFolders.push({
@@ -251,8 +114,8 @@ export const handleGetVideos: RequestHandler = async (req, res) => {
         });
       }
 
-      // Fetch videos from all folders in parallel for much faster response
-      console.log(`Fetching videos from ${folders.length} folders in parallel...`);
+      // Fetch ALL videos from all folders in parallel
+      console.log(`Fetching all videos from ${folders.length} folders in parallel...`);
       const folderPromises = folders.map(async (folder) => {
         const folderStartTime = Date.now();
         try {
@@ -262,15 +125,18 @@ export const handleGetVideos: RequestHandler = async (req, res) => {
             return [];
           }
 
-          const url = `${UPNSHARE_API_BASE}/video/folder/${folder.id}?page=1&perPage=${MAX_VIDEOS_PER_FOLDER}`;
-          const response = await fetchWithAuth(url, TIMEOUT_PER_FOLDER);
-          const videos = Array.isArray(response) ? response : response.data || [];
+          const result = await fetchAllVideosFromFolder(folder.id);
           
           const folderDuration = Date.now() - folderStartTime;
           performanceMonitor.recordFolderFetch(folder.id, folder.name, folderDuration);
-          console.log(`  ✓ Found ${videos.length} videos in ${folder.name} (${folderDuration}ms)`);
           
-          return videos.map((video: any) => normalizeVideo(video, folder.id));
+          if (result.error) {
+            console.warn(`  ⚠️  Partial data from ${folder.name}: ${result.error}`);
+          }
+          
+          console.log(`  ✓ Found ${result.videos.length} videos in ${folder.name} (${folderDuration}ms)`);
+          
+          return result.videos.map((video: any) => normalizeVideo(video, folder.id));
         } catch (error) {
           const folderDuration = Date.now() - folderStartTime;
           
@@ -444,18 +310,19 @@ export const handleGetVideosPaginated: RequestHandler = async (req, res) => {
     }
     
     // Fetch ALL videos from ALL folders to build accurate pagination
-    const MAX_VIDEOS_PER_FOLDER = 100;
     const folderPromises = folders.map(async (folder: any) => {
       const folderStartTime = Date.now();
       try {
-        const url = `${UPNSHARE_API_BASE}/video/folder/${folder.id}?page=1&perPage=${MAX_VIDEOS_PER_FOLDER}`;
-        const response = await fetchWithAuth(url, 4000);
-        const videos = Array.isArray(response) ? response : response.data || [];
+        const result = await fetchAllVideosFromFolder(folder.id);
         
         const folderDuration = Date.now() - folderStartTime;
         performanceMonitor.recordFolderFetch(folder.id, folder.name, folderDuration);
         
-        return videos.map((video: any) => normalizeVideo(video, folder.id));
+        if (result.error) {
+          console.warn(`⚠️ Partial data from ${folder.name}: ${result.error}`);
+        }
+        
+        return result.videos.map((video: any) => normalizeVideo(video, folder.id));
       } catch (error) {
         if (error instanceof Error && error.message.includes('timeout')) {
           performanceMonitor.recordTimeout();

@@ -5,15 +5,24 @@ const UPNSHARE_API_BASE = "https://upnshare.com/api/v1";
 const API_TOKEN = process.env.UPNSHARE_API_TOKEN || "";
 
 async function fetchWithAuth(url: string) {
-  // Try with Bearer token first
-  let response = await fetch(url, {
+  // Try with api_token query parameter (most common for UPNshare)
+  let response = await fetch(`${url}?api_token=${API_TOKEN}`, {
     headers: {
-      Authorization: `Bearer ${API_TOKEN}`,
       "Content-Type": "application/json",
     },
   });
 
-  // If Bearer fails, try with api_token header
+  // If that fails, try with Bearer token
+  if (!response.ok && response.status === 401) {
+    response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${API_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+    });
+  }
+
+  // If that fails, try with api_token header
   if (!response.ok && response.status === 401) {
     response = await fetch(url, {
       headers: {
@@ -23,21 +32,9 @@ async function fetchWithAuth(url: string) {
     });
   }
 
-  // If that fails, try as query parameter
-  if (!response.ok && response.status === 401) {
-    const separator = url.includes("?") ? "&" : "?";
-    response = await fetch(`${url}${separator}api_token=${API_TOKEN}`, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-  }
-
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`UPNshare API error (${response.status}):`, errorText);
     throw new Error(
-      `UPNshare API error: ${response.status} ${response.statusText} - ${errorText}`
+      `UPNshare API error: ${response.status} ${response.statusText}`
     );
   }
 

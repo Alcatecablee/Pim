@@ -15,6 +15,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 async function fetchWithAuth(url: string) {
   // UPNshare uses api-token header (with hyphen, not underscore)
+  console.log(`[fetchWithAuth] Fetching: ${url}`);
   const response = await fetch(url, {
     headers: {
       "api-token": API_TOKEN,
@@ -23,6 +24,9 @@ async function fetchWithAuth(url: string) {
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[fetchWithAuth] API error: ${response.status} ${response.statusText}`);
+    console.error(`[fetchWithAuth] Error response body:`, errorText);
     throw new Error(
       `UPNshare API error: ${response.status} ${response.statusText}`,
     );

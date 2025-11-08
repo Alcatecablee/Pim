@@ -19,15 +19,16 @@ export default function Index() {
       const response = await fetch("/api/videos");
 
       if (!response.ok) {
-        throw new Error("Failed to fetch videos");
+        const errorData = await response.json();
+        const errorMessage = errorData.error || `HTTP ${response.status}: ${response.statusText}`;
+        throw new Error(errorMessage);
       }
 
       const data = (await response.json()) as VideosResponse;
       setVideos(data.videos);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "An error occurred while fetching videos"
-      );
+      const errorMessage = err instanceof Error ? err.message : "An error occurred while fetching videos";
+      setError(errorMessage);
       console.error("Error fetching videos:", err);
     } finally {
       setLoading(false);

@@ -89,35 +89,55 @@ export function normalizeVideo(video: any, folderId: string): Video {
 
 export async function fetchAllVideosFromFolder(
   folderId: string,
+  maxPageDelay = 50, // Reduced from 300ms to speed up pagination
 ): Promise<{ videos: any[]; error?: string }> {
   const allVideos: any[] = [];
   let page = 1;
   const perPage = 100;
 
   try {
-    while (true) {
-      const url = `${UPNSHARE_API_BASE}/video/folder/${folderId}?page=${page}&perPage=${perPage}`;
-      const response = await fetchWithAuth(url);
+    // First, get the first page to determine how many pages we need
+    const firstPageUrl = `${UPNSHARE_API_BASE}/video/folder/${folderId}?page=1&perPage=${perPage}`;
+    const firstResponse = await fetchWithAuth(firstPageUrl, 8000);
 
-      const videos = Array.isArray(response) ? response : response.data || [];
+    const firstVideos = Array.isArray(firstResponse) ? firstResponse : firstResponse.data || [];
+    const metadata = firstResponse.metadata || {};
 
-      const metadata = response.metadata || {};
+    if (firstVideos.length > 0) {
+      allVideos.push(...firstVideos);
+    }
 
-      if (videos.length > 0) {
-        allVideos.push(...videos);
+    const maxPage = metadata.maxPage || Math.ceil((metadata.total || 0) / perPage);
+
+    // If there's more than one page, fetch remaining pages in parallel
+    if (maxPage > 1) {
+      const pagePromises: Promise<any[]>[] = [];
+
+      for (let p = 2; p <= maxPage; p++) {
+        // Stagger the requests slightly to avoid overwhelming the API
+        const promise = (async () => {
+          await new Promise(resolve => setTimeout(resolve, (p - 2) * maxPageDelay));
+          try {
+            const url = `${UPNSHARE_API_BASE}/video/folder/${folderId}?page=${p}&perPage=${perPage}`;
+            const response = await fetchWithAuth(url, 8000);
+            const videos = Array.isArray(response) ? response : response.data || [];
+            return videos;
+          } catch (error) {
+            console.error(`Error fetching page ${p} of folder ${folderId}:`, error);
+            return [];
+          }
+        })();
+
+        pagePromises.push(promise);
       }
 
-      const currentPage = metadata.currentPage || page;
-      const maxPage =
-        metadata.maxPage || Math.ceil((metadata.total || 0) / perPage);
-
-      if (!videos.length || currentPage >= maxPage) {
-        break;
+      // Wait for all pages to complete, but with a reasonable timeout
+      const pageResults = await Promise.allSettled(pagePromises);
+      for (const result of pageResults) {
+        if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+          allVideos.push(...result.value);
+        }
       }
-
-      page++;
-
-      await new Promise((resolve) => setTimeout(resolve, 300));
     }
 
     return { videos: allVideos };

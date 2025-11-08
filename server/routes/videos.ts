@@ -142,6 +142,9 @@ export const handleGetVideos: RequestHandler = async (req, res) => {
       for (const video of videos) {
         allVideos.push(normalizeVideo(video, folder.id));
       }
+
+      // Add delay between folder requests to avoid rate limiting
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
     const response: VideosResponse = {

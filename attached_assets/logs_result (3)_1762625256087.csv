@@ -1,0 +1,49 @@
+"TimeUTC","timestampInMs","requestPath","requestMethod","requestQueryString","responseStatusCode","requestId","requestUserAgent","level","environment","branch","vercelCache","type","function","host","deploymentDomain","deploymentId","durationMs","region","maxMemoryUsed","memorySize","message","projectId","traceId","sessionId","invocationId","instanceId","concurrency"
+"2025-11-08 18:07:07",1762625227609,"mpz-beta.vercel.app/api/videos","GET","",-1,"l78t7-1762625227064-281d7c588e38","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36","error","production","main","","lambda","/api/index","mpz-beta.vercel.app","mpz-beta.vercel.app","dpl_4NpenVyxnaqtJtmsNxauy261DKe7",-1,"iad1",-1,-1,"Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/var/task/server/index' imported from /var/task/api/index.js
+    at finalizeResolution (node:internal/modules/esm/resolve:280:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at moduleResolveWithNodePath (node:internal/modules/esm/resolve:989:14)
+    at defaultResolve (node:internal/modules/esm/resolve:1032:79)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:783:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:707:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:690:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:307:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:183:49)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///var/task/server/index'
+}
+Node.js process exited with exit status: 1. The logs above can help with debugging the issue.","prj_gtVSgZ6XsYPB8EGETR5StVruReAP","","","01K9JAD2P4X215HT1X53Q0YVTG","",-1
+"2025-11-08 18:07:07",1762625227460,"mpz-beta.vercel.app/api/videos","GET","",500,"l78t7-1762625227064-281d7c588e38","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36","error","production","main","","lambda","/api/index","mpz-beta.vercel.app","mpz-beta.vercel.app","dpl_4NpenVyxnaqtJtmsNxauy261DKe7",126,"iad1",78,2048,"","prj_gtVSgZ6XsYPB8EGETR5StVruReAP","","","01K9JAD2P4X215HT1X53Q0YVTG","",1
+"2025-11-08 18:02:06",1762624926678,"mpz-68apptgsp-alcatecs-projects.vercel.app/api/videos","GET","",-1,"ls8wf-1762624926497-0b0a512f0d00","vercel-screenshot/1.0","error","production","main","","lambda","/api/index","mpz-68apptgsp-alcatecs-projects.vercel.app","mpz-68apptgsp-alcatecs-projects.vercel.app","dpl_4NpenVyxnaqtJtmsNxauy261DKe7",-1,"iad1",-1,-1,"Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/var/task/server/index' imported from /var/task/api/index.js
+    at finalizeResolution (node:internal/modules/esm/resolve:280:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at moduleResolveWithNodePath (node:internal/modules/esm/resolve:989:14)
+    at defaultResolve (node:internal/modules/esm/resolve:1032:79)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:783:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:707:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:690:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:307:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:183:49)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///var/task/server/index'
+}
+Node.js process exited with exit status: 1. The logs above can help with debugging the issue.","prj_gtVSgZ6XsYPB8EGETR5StVruReAP","","","01K9JA3WT9JWMFXQT4E9K5DY3K","",-1
+"2025-11-08 18:02:06",1762624926537,"mpz-68apptgsp-alcatecs-projects.vercel.app/api/videos","GET","",500,"ls8wf-1762624926497-0b0a512f0d00","vercel-screenshot/1.0","error","production","main","","lambda","/api/index","mpz-68apptgsp-alcatecs-projects.vercel.app","mpz-68apptgsp-alcatecs-projects.vercel.app","dpl_4NpenVyxnaqtJtmsNxauy261DKe7",122,"iad1",78,2048,"","prj_gtVSgZ6XsYPB8EGETR5StVruReAP","","","01K9JA3WT9JWMFXQT4E9K5DY3K","",1
+"2025-11-08 18:02:06",1762624926107,"mpz-68apptgsp-alcatecs-projects.vercel.app/api/videos","GET","",-1,"qtzgp-1762624925803-908d6bc5cc1b","vercel-screenshot/1.0","error","production","main","","lambda","/api/index","mpz-68apptgsp-alcatecs-projects.vercel.app","mpz-68apptgsp-alcatecs-projects.vercel.app","dpl_4NpenVyxnaqtJtmsNxauy261DKe7",-1,"iad1",-1,-1,"Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/var/task/server/index' imported from /var/task/api/index.js
+    at finalizeResolution (node:internal/modules/esm/resolve:280:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at moduleResolveWithNodePath (node:internal/modules/esm/resolve:989:14)
+    at defaultResolve (node:internal/modules/esm/resolve:1032:79)
+    at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:783:12)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:707:25)
+    at ModuleLoader.resolve (node:internal/modules/esm/loader:690:38)
+    at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:307:38)
+    at ModuleJob._link (node:internal/modules/esm/module_job:183:49)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///var/task/server/index'
+}
+Node.js process exited with exit status: 1. The logs above can help with debugging the issue.","prj_gtVSgZ6XsYPB8EGETR5StVruReAP","","","01K9JA3W834JM871FBC4Z3TV4Q","",-1
+"2025-11-08 18:02:05",1762624925955,"mpz-68apptgsp-alcatecs-projects.vercel.app/api/videos","GET","",500,"qtzgp-1762624925803-908d6bc5cc1b","vercel-screenshot/1.0","error","production","main","","lambda","/api/index","mpz-68apptgsp-alcatecs-projects.vercel.app","mpz-68apptgsp-alcatecs-projects.vercel.app","dpl_4NpenVyxnaqtJtmsNxauy261DKe7",122,"iad1",78,2048,"","prj_gtVSgZ6XsYPB8EGETR5StVruReAP","","","01K9JA3W834JM871FBC4Z3TV4Q","",1

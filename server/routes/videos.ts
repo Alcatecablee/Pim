@@ -23,7 +23,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export const handleGetVideos: RequestHandler = async (req, res) => {
   const startTime = Date.now();
-  const GLOBAL_TIMEOUT = 20000; // 20 seconds - be conservative to avoid Vercel's 30s limit
+  const GLOBAL_TIMEOUT = 15000; // 15 seconds - be very conservative to avoid Vercel's 30s limit
 
   try {
     performanceMonitor.recordRequest();

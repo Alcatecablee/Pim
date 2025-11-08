@@ -62,14 +62,20 @@ shared/                   # Types used by both client & server
 - Fixed TypeScript config for ES modules (__dirname support)
 - Updated .gitignore to properly exclude .env files
 - Set up dev workflow for automatic server restart
+- **Latest (Nov 8, 2025)**: Fixed Vercel production timeout issues with global 25s timeout and stale cache fallback
 
 ## Robustness Improvements (Nov 8, 2025)
 ### Backend Optimizations (server/routes/videos.ts)
-- **Timeout Handling**: Added 10s timeout to all API requests (20s for folder list)
-- **Parallel Folder Fetching**: Changed from sequential to parallel processing - fetches all 4 folders simultaneously for dramatic speed improvement
+- **Global Timeout Protection**: 25-second global timeout to stay within Vercel's 30s serverless limit
+- **Adaptive Timeout Handling**: 
+  - Folder list fetch: 5-second timeout
+  - Per-folder video fetch: 4-second timeout
+  - Early exit if running out of time (skips remaining folders)
+- **Parallel Folder Fetching**: Changed from sequential to parallel processing - fetches all folders simultaneously for dramatic speed improvement
 - **Per-Folder Video Limit**: Limits to 20 videos per folder for faster initial load and to prevent serverless timeouts
 - **Graceful Degradation**: Individual folder failures don't crash the entire response
 - **5-Minute Cache**: Implements TTL-based caching to reduce API calls
+- **Stale Cache Fallback**: Returns old cached data if timeout occurs, ensuring users always get a response
 
 ### Frontend Resilience (client/pages/Index.tsx)
 - **Automatic Retry Logic**: Up to 2 retries with 2-second delays for network errors

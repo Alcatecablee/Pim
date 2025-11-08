@@ -11,10 +11,9 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "0.0.0.0",
     port: 5000,
-    allowedHosts: ["*"],
+    allowedHosts: true,
     hmr: {
-      clientPort: 443,
-      protocol: "wss",
+      port: 5000,
     },
     fs: {
       allow: ["."],

@@ -5,34 +5,13 @@ const UPNSHARE_API_BASE = "https://upnshare.com/api/v1";
 const API_TOKEN = process.env.UPNSHARE_API_TOKEN || "";
 
 async function fetchWithAuth(url: string) {
-  const separator = url.includes("?") ? "&" : "?";
-
-  // Try with api_token query parameter (most common for UPNshare)
-  let response = await fetch(`${url}${separator}api_token=${API_TOKEN}`, {
+  // UPNshare uses api-token header (with hyphen, not underscore)
+  const response = await fetch(url, {
     headers: {
+      "api-token": API_TOKEN,
       "Content-Type": "application/json",
     },
   });
-
-  // If that fails, try with Bearer token
-  if (!response.ok && response.status === 401) {
-    response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${API_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-    });
-  }
-
-  // If that fails, try with api_token header
-  if (!response.ok && response.status === 401) {
-    response = await fetch(url, {
-      headers: {
-        "api_token": API_TOKEN,
-        "Content-Type": "application/json",
-      },
-    });
-  }
 
   if (!response.ok) {
     throw new Error(

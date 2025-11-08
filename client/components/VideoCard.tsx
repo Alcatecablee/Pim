@@ -1,19 +1,19 @@
-import { Video } from "@shared/api";
-import { Play } from "lucide-react";
+import { Video, VideoFolder } from "@shared/api";
 import { Link } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
+import { Folder } from "lucide-react";
 
 interface VideoCardProps {
   video: Video;
+  folder?: VideoFolder;
 }
 
-export function VideoCard({ video }: VideoCardProps) {
+export function VideoCard({ video, folder }: VideoCardProps) {
   const videoLink = `/video/${video.id}`;
   const [isVisible, setIsVisible] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
+  const imgRef = useRef<HTMLDivElement>(null);
   const [watchProgress, setWatchProgress] = useState<number>(0);
 
-  // Lazy loading with IntersectionObserver
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -24,9 +24,7 @@ export function VideoCard({ video }: VideoCardProps) {
           }
         });
       },
-      {
-        rootMargin: "50px", // Load slightly before entering viewport
-      }
+      { rootMargin: "50px" }
     );
 
     if (imgRef.current) {
@@ -36,7 +34,6 @@ export function VideoCard({ video }: VideoCardProps) {
     return () => observer.disconnect();
   }, []);
 
-  // Load watch progress from localStorage
   useEffect(() => {
     const saved = localStorage.getItem(`video-progress-${video.id}`);
     if (saved) {
@@ -69,83 +66,85 @@ export function VideoCard({ video }: VideoCardProps) {
     if (diffDays < 7) return `${diffDays} days ago`;
     if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
     if (diffDays < 365) return `${Math.floor(diffDays / 30)} months ago`;
-    return date.toLocaleDateString();
+    return `${Math.floor(diffDays / 365)} years ago`;
   };
 
   const formatViews = (views?: number) => {
-    if (!views) return "";
+    if (!views) return "No";
     if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`;
     if (views >= 1000) return `${(views / 1000).toFixed(1)}K`;
     return views.toString();
   };
 
   return (
-    <Link to={videoLink}>
-      <div className="group cursor-pointer">
-        <div className="relative overflow-hidden rounded-lg bg-gray-200 dark:bg-gray-800 aspect-video mb-3 shadow-sm hover:shadow-md transition-shadow duration-300">
-          {video.poster || video.thumbnail ? (
-            <img
-              ref={imgRef}
-              src={isVisible ? (video.poster || video.thumbnail) : undefined}
-              alt={video.title}
-              className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${!isVisible ? "bg-gray-300 dark:bg-gray-700" : ""}`}
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-purple-400 to-blue-500 flex items-center justify-center">
-              <Play className="w-16 h-16 text-white opacity-30" />
-            </div>
-          )}
-
-          {/* Watch Progress Bar */}
-          {watchProgress > 5 && (
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/40">
-              <div
-                className="h-full bg-primary transition-all"
-                style={{ width: `${watchProgress}%` }}
-              />
-            </div>
-          )}
-
-          {video.duration > 0 && (
-            <div className="absolute bottom-2 right-2 bg-black/80 px-2 py-1 rounded text-white text-xs font-semibold">
-              {formatDuration(video.duration)}
-            </div>
-          )}
-
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
-            <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              <Play className="w-6 h-6 text-white fill-white" />
-            </div>
-          </div>
-        </div>
-
-      <div className="space-y-1.5">
-        <h3 className="font-semibold text-sm leading-snug line-clamp-2 text-foreground group-hover:text-primary transition-colors break-words">
-          {video.title}
-        </h3>
-
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {video.views !== undefined && (
-            <span>{formatViews(video.views)} views</span>
-          )}
-          {video.views !== undefined && video.created_at && <span>•</span>}
-          {video.created_at && <span>{formatDate(video.created_at)}</span>}
-        </div>
-
-        {video.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2">
-            {video.description}
-          </p>
+    <Link to={videoLink} className="group block">
+      {/* Thumbnail */}
+      <div 
+        ref={imgRef}
+        className="relative w-full aspect-video rounded-xl overflow-hidden bg-gray-200 dark:bg-gray-800 mb-3"
+      >
+        {(video.poster || video.thumbnail) && isVisible ? (
+          <img
+            src={video.poster || video.thumbnail}
+            alt={video.title}
+            className="w-full h-full object-cover transition-transform duration-200 ease-out group-hover:scale-105"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-gray-300 to-gray-400 dark:from-gray-700 dark:to-gray-800" />
         )}
 
-        {video.size && (
-          <p className="text-xs text-muted-foreground">
-            {(video.size / (1024 * 1024)).toFixed(2)} MB
-          </p>
+        {/* Watch Progress Bar */}
+        {watchProgress > 5 && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-400/50">
+            <div
+              className="h-full bg-red-600"
+              style={{ width: `${watchProgress}%` }}
+            />
+          </div>
+        )}
+
+        {/* Duration Badge */}
+        {video.duration > 0 && (
+          <div className="absolute bottom-1 right-1 bg-black/80 text-white text-xs font-semibold px-1 py-0.5 rounded">
+            {formatDuration(video.duration)}
+          </div>
         )}
       </div>
-    </div>
+
+      {/* Video Info */}
+      <div className="flex gap-3">
+        {/* Channel Avatar */}
+        <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+          <Folder className="w-5 h-5 text-white" />
+        </div>
+
+        {/* Text Content */}
+        <div className="flex-1 min-w-0">
+          {/* Title */}
+          <h3 className="text-sm font-semibold line-clamp-2 text-gray-900 dark:text-gray-100 mb-1 leading-snug">
+            {video.title}
+          </h3>
+
+          {/* Channel Name */}
+          <div className="text-xs text-gray-600 dark:text-gray-400">
+            <p className="hover:text-gray-900 dark:hover:text-gray-200 transition-colors">
+              {folder?.name || "VideoHub"}
+            </p>
+          </div>
+
+          {/* Views and Date */}
+          <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+            <span>{formatViews(video.views)} views</span>
+            {video.created_at && (
+              <>
+                <span>•</span>
+                <span>{formatDate(video.created_at)}</span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </Link>
   );
 }

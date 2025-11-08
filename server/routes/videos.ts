@@ -328,14 +328,17 @@ export const handleVideoStream: RequestHandler = async (req, res) => {
     if (cache && Date.now() - cache.timestamp < CACHE_TTL) {
       const video = cache.data.videos.find((v) => v.id === id);
       if (video?.assetUrl && video?.assetPath) {
-        const assetUrl = video.assetUrl || "https://assets.upns.net";
+        const assetUrl = video.assetUrl;
+        const assetPath = video.assetPath.startsWith("/")
+          ? video.assetPath
+          : "/" + video.assetPath;
 
         if (format === "mp4") {
-          return res.redirect(`${assetUrl}${video.assetPath}/video.mp4`);
+          return res.redirect(`${assetUrl}${assetPath}/video.mp4`);
         }
 
         // Default to HLS
-        return res.redirect(`${assetUrl}${video.assetPath}/index.m3u8`);
+        return res.redirect(`${assetUrl}${assetPath}/index.m3u8`);
       }
     }
 
@@ -350,12 +353,22 @@ export const handleVideoStream: RequestHandler = async (req, res) => {
       });
     }
 
-    // Extract asset path from poster
-    const posterPath = videoData.poster
-      ? videoData.poster.replace(/\/[^/]*$/, "")
-      : null;
+    // Extract asset path from poster URL
+    // e.g., "https://assets.upns.net/ilwWC4Mp5.../poster.png" -> "/ilwWC4Mp5..."
+    // or "/ilwWC4Mp5.../poster.png" -> "/ilwWC4Mp5..."
+    let assetPath: string | undefined;
+    const posterUrl = videoData.poster.startsWith("http")
+      ? videoData.poster
+      : (videoData.assetUrl || "https://assets.upns.net") + videoData.poster;
 
-    if (!posterPath) {
+    const pathMatch = posterUrl.match(
+      /^https?:\/\/[^/]+(\/.*)\/(poster|preview|[^/]+\.(png|jpg|jpeg|webp))$/i,
+    );
+    if (pathMatch) {
+      assetPath = pathMatch[1];
+    }
+
+    if (!assetPath) {
       return res.status(404).json({
         error: "Video source path not available",
       });
@@ -364,11 +377,11 @@ export const handleVideoStream: RequestHandler = async (req, res) => {
     const assetUrl = videoData.assetUrl || "https://assets.upns.net";
 
     if (format === "mp4") {
-      return res.redirect(`${assetUrl}${posterPath}/video.mp4`);
+      return res.redirect(`${assetUrl}${assetPath}/video.mp4`);
     }
 
     // Default to HLS stream
-    res.redirect(`${assetUrl}${posterPath}/index.m3u8`);
+    res.redirect(`${assetUrl}${assetPath}/index.m3u8`);
   } catch (error) {
     console.error(`Error streaming video ${req.params.id}:`, error);
     res.status(500).json({

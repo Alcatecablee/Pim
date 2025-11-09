@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { Video, VideosResponse } from "@shared/api";
 import {
@@ -18,7 +18,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import {
   Search,
   ArrowUpDown,
@@ -30,9 +50,11 @@ import {
   Calendar,
   HardDrive,
   Clock,
+  MoveRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
 
 type SortField = "title" | "duration" | "size" | "created_at" | "views";
 type SortOrder = "asc" | "desc";
@@ -57,7 +79,17 @@ export default function VideosManagement() {
   const [sortField, setSortField] = useState<SortField>("created_at");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [videoToDelete, setVideoToDelete] = useState<Video | null>(null);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [videoToRename, setVideoToRename] = useState<Video | null>(null);
+  const [newVideoName, setNewVideoName] = useState("");
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [targetFolderId, setTargetFolderId] = useState("");
   const ITEMS_PER_PAGE = 20;
+
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery<VideosResponse>({
     queryKey: ["videos"],
@@ -67,6 +99,136 @@ export default function VideosManagement() {
       return response.json();
     },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (videoId: string) => {
+      const response = await fetch(`/api/admin/videos/${videoId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to delete video");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["videos"] });
+      toast.success("Video deleted successfully");
+      setDeleteDialogOpen(false);
+      setVideoToDelete(null);
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete video: ${error.message}`);
+    },
+  });
+
+  const renameMutation = useMutation({
+    mutationFn: async ({ videoId, name }: { videoId: string; name: string }) => {
+      const response = await fetch(`/api/admin/videos/${videoId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (!response.ok) throw new Error("Failed to rename video");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["videos"] });
+      toast.success("Video renamed successfully");
+      setRenameDialogOpen(false);
+      setVideoToRename(null);
+      setNewVideoName("");
+    },
+    onError: (error) => {
+      toast.error(`Failed to rename video: ${error.message}`);
+    },
+  });
+
+  const moveMutation = useMutation({
+    mutationFn: async ({ videoIds, folderId }: { videoIds: string[]; folderId: string }) => {
+      const response = await fetch("/api/admin/videos/move", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoIds, folderId }),
+      });
+      if (!response.ok) throw new Error("Failed to move videos");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["videos"] });
+      toast.success("Videos moved successfully");
+      setMoveDialogOpen(false);
+      setSelectedVideos(new Set());
+      setTargetFolderId("");
+    },
+    onError: (error) => {
+      toast.error(`Failed to move videos: ${error.message}`);
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (videoIds: string[]) => {
+      const response = await fetch("/api/admin/videos/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoIds }),
+      });
+      if (!response.ok) throw new Error("Failed to delete videos");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["videos"] });
+      toast.success(`Deleted ${data.successful} videos successfully`);
+      if (data.failed > 0) {
+        toast.warning(`Failed to delete ${data.failed} videos`);
+      }
+      setSelectedVideos(new Set());
+    },
+    onError: (error) => {
+      toast.error(`Failed to delete videos: ${error.message}`);
+    },
+  });
+
+  const handleDelete = (video: Video) => {
+    setVideoToDelete(video);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleRename = (video: Video) => {
+    setVideoToRename(video);
+    setNewVideoName(video.title || "");
+    setRenameDialogOpen(true);
+  };
+
+  const handleBulkMove = () => {
+    if (selectedVideos.size === 0) {
+      toast.error("Please select videos to move");
+      return;
+    }
+    setMoveDialogOpen(true);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedVideos.size === 0) {
+      toast.error("Please select videos to delete");
+      return;
+    }
+    if (confirm(`Are you sure you want to delete ${selectedVideos.size} videos?`)) {
+      bulkDeleteMutation.mutate(Array.from(selectedVideos));
+    }
+  };
+
+  const toggleVideoSelection = (videoId: string) => {
+    const newSelection = new Set(selectedVideos);
+    if (newSelection.has(videoId)) {
+      newSelection.delete(videoId);
+    } else {
+      newSelection.add(videoId);
+    }
+    setSelectedVideos(newSelection);
+  };
+
+  const toggleAllVideos = () => {
+    if (selectedVideos.size === paginatedVideos.length) {
+      setSelectedVideos(new Set());
+    } else {
+      setSelectedVideos(new Set(paginatedVideos.map((v) => v.id)));
+    }
+  };
 
   const filteredAndSortedVideos = useMemo(() => {
     if (!data?.videos) return [];
@@ -169,6 +331,26 @@ export default function VideosManagement() {
         </div>
       </div>
 
+      {selectedVideos.size > 0 && (
+        <Card className="p-4 bg-muted">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium">
+              {selectedVideos.size} video{selectedVideos.size > 1 ? "s" : ""} selected
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleBulkMove}>
+                <MoveRight className="h-4 w-4 mr-2" />
+                Move to Folder
+              </Button>
+              <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Selected
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
       <Card className="p-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
@@ -211,6 +393,12 @@ export default function VideosManagement() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[50px]">
+                  <Checkbox
+                    checked={selectedVideos.size === paginatedVideos.length && paginatedVideos.length > 0}
+                    onCheckedChange={toggleAllVideos}
+                  />
+                </TableHead>
                 <TableHead className="w-[50px]"></TableHead>
                 <TableHead>
                   <Button
@@ -277,6 +465,12 @@ export default function VideosManagement() {
                 paginatedVideos.map((video) => (
                   <TableRow key={video.id}>
                     <TableCell>
+                      <Checkbox
+                        checked={selectedVideos.has(video.id)}
+                        onCheckedChange={() => toggleVideoSelection(video.id)}
+                      />
+                    </TableCell>
+                    <TableCell>
                       {video.poster && (
                         <img
                           src={video.poster}
@@ -332,10 +526,18 @@ export default function VideosManagement() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" disabled>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRename(video)}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" disabled>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(video)}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -400,6 +602,112 @@ export default function VideosManagement() {
           </div>
         )}
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Video</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{videoToDelete?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => videoToDelete && deleteMutation.mutate(videoToDelete.id)}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Rename Dialog */}
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Video</DialogTitle>
+            <DialogDescription>
+              Enter a new name for this video
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="videoName">Video Name</Label>
+              <Input
+                id="videoName"
+                value={newVideoName}
+                onChange={(e) => setNewVideoName(e.target.value)}
+                placeholder="Enter video name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (videoToRename) {
+                  renameMutation.mutate({ videoId: videoToRename.id, name: newVideoName });
+                }
+              }}
+              disabled={!newVideoName.trim() || renameMutation.isPending}
+            >
+              {renameMutation.isPending ? "Renaming..." : "Rename"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Move to Folder Dialog */}
+      <Dialog open={moveDialogOpen} onOpenChange={setMoveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Move Videos to Folder</DialogTitle>
+            <DialogDescription>
+              Select a folder to move {selectedVideos.size} video{selectedVideos.size > 1 ? "s" : ""} to
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="targetFolder">Target Folder</Label>
+              <Select value={targetFolderId} onValueChange={setTargetFolderId}>
+                <SelectTrigger id="targetFolder">
+                  <SelectValue placeholder="Select a folder" />
+                </SelectTrigger>
+                <SelectContent>
+                  {data?.folders.map((folder) => (
+                    <SelectItem key={folder.id} value={folder.id}>
+                      {folder.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMoveDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (targetFolderId) {
+                  moveMutation.mutate({
+                    videoIds: Array.from(selectedVideos),
+                    folderId: targetFolderId,
+                  });
+                }
+              }}
+              disabled={!targetFolderId || moveMutation.isPending}
+            >
+              {moveMutation.isPending ? "Moving..." : "Move"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

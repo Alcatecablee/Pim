@@ -200,27 +200,43 @@ export async function handleBulkDeleteVideos(
     console.log(`[handleBulkDeleteVideos] Deleting ${videoIds.length} videos`);
 
     const results = await Promise.allSettled(
-      videoIds.map((id) =>
-        fetch(`${UPNSHARE_API_BASE}/video/manage/${id}`, {
+      videoIds.map(async (id) => {
+        const response = await fetch(`${UPNSHARE_API_BASE}/video/manage/${id}`, {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${API_TOKEN}`,
           },
-        })
-      )
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => "Unknown error");
+          throw new Error(`Failed to delete ${id}: ${response.status} ${errorText}`);
+        }
+        
+        return { id, success: true };
+      })
     );
 
     const successful = results.filter((r) => r.status === "fulfilled").length;
     const failed = results.filter((r) => r.status === "rejected").length;
+    
+    const errors = results
+      .filter((r) => r.status === "rejected")
+      .map((r) => (r as PromiseRejectedResult).reason.message);
 
     console.log(
       `[handleBulkDeleteVideos] Deleted ${successful}/${videoIds.length} videos (${failed} failed)`
     );
 
+    if (errors.length > 0) {
+      console.error(`[handleBulkDeleteVideos] Errors:`, errors);
+    }
+
     res.json({
       successful,
       failed,
       total: videoIds.length,
+      errors: failed > 0 ? errors : undefined,
     });
   } catch (error) {
     console.error("[handleBulkDeleteVideos] Error:", error);

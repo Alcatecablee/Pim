@@ -1,29 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, RefreshCw, Video, FolderOpen, HardDrive, Users } from "lucide-react";
+import { Loader2, RefreshCw, Video, FolderOpen, HardDrive, Users, FileDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp";
+import { DashboardSkeleton } from "@/components/admin/DashboardSkeleton";
+import {
+  exportAnalyticsToCSV,
+  exportAnalyticsToJSON,
+  exportFolderBreakdownToCSV,
+  AdminOverview as IAdminOverview,
+} from "@/utils/exportUtils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-interface AdminOverview {
-  totalVideos: number;
-  totalFolders: number;
-  totalStorage: number;
-  activeViewers: number;
-  folderBreakdown: Array<{
-    folderId: string;
-    folderName: string;
-    videoCount: number;
-    totalSize: number;
-  }>;
-  cacheMetrics: {
-    hitRate: number;
-    totalRequests: number;
-    cacheHits: number;
-    cacheMisses: number;
-  };
-  lastUpdated: string;
-}
+type AdminOverview = IAdminOverview;
 
 const formatBytes = (bytes: number): string => {
   if (bytes === 0) return "0 Bytes";
@@ -34,6 +31,8 @@ const formatBytes = (bytes: number): string => {
 };
 
 export default function AdminDashboard() {
+  const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
+
   const { data, isLoading, error, refetch } = useQuery<AdminOverview>({
     queryKey: ["admin-overview"],
     queryFn: async () => {
@@ -45,6 +44,58 @@ export default function AdminDashboard() {
     },
     refetchInterval: 60000,
   });
+
+  const handleExport = (format: "csv" | "json", type: "overview" | "folders") => {
+    if (!data) return;
+
+    if (type === "overview") {
+      if (format === "csv") {
+        exportAnalyticsToCSV(data);
+        toast.success("Analytics exported to CSV");
+      } else {
+        exportAnalyticsToJSON(data);
+        toast.success("Analytics exported to JSON");
+      }
+    } else {
+      exportFolderBreakdownToCSV(data.folderBreakdown);
+      toast.success("Folder breakdown exported to CSV");
+    }
+  };
+
+  useKeyboardShortcuts([
+    {
+      key: "r",
+      description: "Refresh dashboard",
+      action: () => {
+        refetch();
+        toast.success("Dashboard refreshed");
+      },
+    },
+    {
+      key: "e",
+      ctrl: true,
+      description: "Export overview (CSV)",
+      action: () => handleExport("csv", "overview"),
+    },
+    {
+      key: "?",
+      shift: true,
+      description: "Show keyboard shortcuts",
+      action: () => setShortcutsHelpOpen(true),
+    },
+    {
+      key: "Escape",
+      description: "Close dialogs",
+      action: () => setShortcutsHelpOpen(false),
+    },
+  ]);
+
+  const keyboardShortcuts = [
+    { key: "R", description: "Refresh dashboard" },
+    { key: "E", ctrl: true, description: "Export overview (CSV)" },
+    { key: "?", shift: true, description: "Show keyboard shortcuts" },
+    { key: "ESC", description: "Close dialogs" },
+  ];
 
   useEffect(() => {
     if (data) {
@@ -62,11 +113,7 @@ export default function AdminDashboard() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
@@ -79,17 +126,38 @@ export default function AdminDashboard() {
             Your video management dashboard
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            refetch();
-            toast.success("Dashboard refreshed");
-          }}
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <FileDown className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport("csv", "overview")}>
+                Export Overview (CSV)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport("json", "overview")}>
+                Export Overview (JSON)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport("csv", "folders")}>
+                Export Folder Stats (CSV)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              refetch();
+              toast.success("Dashboard refreshed");
+            }}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -213,6 +281,13 @@ export default function AdminDashboard() {
       <div className="text-sm text-muted-foreground text-center">
         Last updated: {data?.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : "N/A"}
       </div>
+
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp
+        open={shortcutsHelpOpen}
+        onOpenChange={setShortcutsHelpOpen}
+        shortcuts={keyboardShortcuts}
+      />
     </div>
   );
 }

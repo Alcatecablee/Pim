@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Video, VideosResponse } from "@shared/api";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { KeyboardShortcutsHelp } from "@/components/admin/KeyboardShortcutsHelp";
+import { VideoTableSkeleton } from "@/components/admin/VideoTableSkeleton";
 import {
   Table,
   TableBody,
@@ -51,10 +54,21 @@ import {
   HardDrive,
   Clock,
   MoveRight,
+  FileDown,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
+import {
+  exportVideosToCSV,
+  exportVideosToJSON,
+} from "@/utils/exportUtils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type SortField = "title" | "duration" | "size" | "created_at" | "views";
 type SortOrder = "asc" | "desc";
@@ -87,7 +101,9 @@ export default function VideosManagement() {
   const [newVideoName, setNewVideoName] = useState("");
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [targetFolderId, setTargetFolderId] = useState("");
+  const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
   const ITEMS_PER_PAGE = 20;
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const queryClient = useQueryClient();
 
@@ -309,6 +325,70 @@ export default function VideosManagement() {
     return folder?.name || "Unknown";
   };
 
+  const handleExport = (format: "csv" | "json") => {
+    const videosToExport = selectedVideos.size > 0
+      ? filteredAndSortedVideos.filter(v => selectedVideos.has(v.id))
+      : filteredAndSortedVideos;
+
+    if (format === "csv") {
+      exportVideosToCSV(videosToExport);
+      toast.success(`Exported ${videosToExport.length} videos to CSV`);
+    } else {
+      exportVideosToJSON(videosToExport);
+      toast.success(`Exported ${videosToExport.length} videos to JSON`);
+    }
+  };
+
+  useKeyboardShortcuts([
+    {
+      key: "/",
+      description: "Focus search",
+      action: () => searchInputRef.current?.focus(),
+    },
+    {
+      key: "r",
+      description: "Refresh videos",
+      action: () => {
+        queryClient.invalidateQueries({ queryKey: ["videos"] });
+        toast.success("Videos refreshed");
+      },
+    },
+    {
+      key: "e",
+      ctrl: true,
+      description: "Export videos (CSV)",
+      action: () => handleExport("csv"),
+    },
+    {
+      key: "?",
+      shift: true,
+      description: "Show keyboard shortcuts",
+      action: () => setShortcutsHelpOpen(true),
+    },
+    {
+      key: "Escape",
+      description: "Close dialogs",
+      action: () => {
+        setDeleteDialogOpen(false);
+        setRenameDialogOpen(false);
+        setMoveDialogOpen(false);
+        setShortcutsHelpOpen(false);
+      },
+    },
+  ]);
+
+  const keyboardShortcuts = [
+    { key: "/", description: "Focus search" },
+    { key: "R", description: "Refresh videos" },
+    { key: "E", ctrl: true, description: "Export videos (CSV)" },
+    { key: "?", shift: true, description: "Show keyboard shortcuts" },
+    { key: "ESC", description: "Close dialogs" },
+  ];
+
+  if (isLoading) {
+    return <VideoTableSkeleton />;
+  }
+
   if (error) {
     return (
       <div className="space-y-6">
@@ -329,6 +409,22 @@ export default function VideosManagement() {
             {filteredAndSortedVideos.length} videos total
           </p>
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <FileDown className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleExport("csv")}>
+              Export as CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleExport("json")}>
+              Export as JSON
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {selectedVideos.size > 0 && (
@@ -356,7 +452,8 @@ export default function VideosManagement() {
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search videos..."
+              ref={searchInputRef}
+              placeholder="Search videos... (press / to focus)"
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -708,6 +805,13 @@ export default function VideosManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Keyboard Shortcuts Help */}
+      <KeyboardShortcutsHelp
+        open={shortcutsHelpOpen}
+        onOpenChange={setShortcutsHelpOpen}
+        shortcuts={keyboardShortcuts}
+      />
     </div>
   );
 }

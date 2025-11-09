@@ -30,7 +30,7 @@ interface UploadManagerProps {
 export function UploadManager({ folders, onUploadComplete }: UploadManagerProps) {
   const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [selectedFolder, setSelectedFolder] = useState<string>("");
+  const [selectedFolder, setSelectedFolder] = useState<string>("root");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -81,17 +81,17 @@ export function UploadManager({ folders, onUploadComplete }: UploadManagerProps)
       file,
       progress: 0,
       status: "pending" as const,
-      folderId: selectedFolder || undefined,
+      folderId: selectedFolder !== "root" ? selectedFolder : undefined,
     }));
 
     setUploads(prev => [...prev, ...newUploads]);
 
     for (const upload of newUploads) {
-      startUpload(upload.id);
+      startUpload(upload);
     }
   };
 
-  const startUpload = async (uploadId: string) => {
+  const startUpload = async (uploadItem: UploadItem) => {
     try {
       const response = await fetch("/api/upload/credentials");
       if (!response.ok) {
@@ -102,71 +102,68 @@ export function UploadManager({ folders, onUploadComplete }: UploadManagerProps)
 
       setUploads(prev =>
         prev.map(u =>
-          u.id === uploadId ? { ...u, status: "uploading" as const } : u
+          u.id === uploadItem.id ? { ...u, status: "uploading" as const } : u
         )
       );
 
-      const upload = uploads.find(u => u.id === uploadId);
-      if (!upload) return;
-
       const metadata: Record<string, string> = {
         accessToken,
-        filename: upload.file.name,
-        filetype: upload.file.type,
+        filename: uploadItem.file.name,
+        filetype: uploadItem.file.type,
       };
 
-      if (upload.folderId) {
-        metadata.folderId = upload.folderId;
+      if (uploadItem.folderId) {
+        metadata.folderId = uploadItem.folderId;
       }
 
-      const tusUpload = new Upload.Upload(upload.file, {
+      const tusUpload = new Upload.Upload(uploadItem.file, {
         endpoint: tusUrl,
         retryDelays: [0, 3000, 5000, 10000, 20000],
         chunkSize: 52428800, // 50MB as per UPnShare docs
         metadata,
         onError: (error) => {
-          console.error(`[Upload ${uploadId}] Error:`, error);
+          console.error(`[Upload ${uploadItem.id}] Error:`, error);
           setUploads(prev =>
             prev.map(u =>
-              u.id === uploadId
+              u.id === uploadItem.id
                 ? { ...u, status: "error" as const, error: error.message }
                 : u
             )
           );
-          toast.error(`Upload failed: ${upload.file.name}`);
+          toast.error(`Upload failed: ${uploadItem.file.name}`);
         },
         onProgress: (bytesUploaded, bytesTotal) => {
           const percentage = Math.round((bytesUploaded / bytesTotal) * 100);
           setUploads(prev =>
             prev.map(u =>
-              u.id === uploadId ? { ...u, progress: percentage } : u
+              u.id === uploadItem.id ? { ...u, progress: percentage } : u
             )
           );
         },
         onSuccess: () => {
-          console.log(`[Upload ${uploadId}] Completed successfully`);
+          console.log(`[Upload ${uploadItem.id}] Completed successfully`);
           setUploads(prev =>
             prev.map(u =>
-              u.id === uploadId ? { ...u, status: "completed" as const, progress: 100 } : u
+              u.id === uploadItem.id ? { ...u, status: "completed" as const, progress: 100 } : u
             )
           );
-          toast.success(`Upload complete: ${upload.file.name}`);
+          toast.success(`Upload complete: ${uploadItem.file.name}`);
           onUploadComplete?.();
         },
       });
 
       setUploads(prev =>
         prev.map(u =>
-          u.id === uploadId ? { ...u, upload: tusUpload } : u
+          u.id === uploadItem.id ? { ...u, upload: tusUpload } : u
         )
       );
 
       tusUpload.start();
     } catch (error) {
-      console.error(`[Upload ${uploadId}] Failed to start:`, error);
+      console.error(`[Upload ${uploadItem.id}] Failed to start:`, error);
       setUploads(prev =>
         prev.map(u =>
-          u.id === uploadId
+          u.id === uploadItem.id
             ? { ...u, status: "error" as const, error: error instanceof Error ? error.message : "Unknown error" }
             : u
         )
@@ -240,10 +237,10 @@ export function UploadManager({ folders, onUploadComplete }: UploadManagerProps)
         <div className="flex gap-4">
           <Select value={selectedFolder} onValueChange={setSelectedFolder}>
             <SelectTrigger className="w-[250px]">
-              <SelectValue placeholder="Select folder (optional)" />
+              <SelectValue placeholder="Select folder" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No folder (root)</SelectItem>
+              <SelectItem value="root">No folder (root)</SelectItem>
               {folders.map(folder => (
                 <SelectItem key={folder.id} value={folder.id}>
                   {folder.name}
@@ -340,7 +337,7 @@ export function UploadManager({ folders, onUploadComplete }: UploadManagerProps)
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => startUpload(upload.id)}
+                            onClick={() => startUpload(upload)}
                           >
                             <Play className="h-4 w-4" />
                           </Button>

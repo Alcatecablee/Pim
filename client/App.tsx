@@ -13,6 +13,7 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
 import VideosManagement from "./pages/admin/Videos";
 import Folders from "./pages/admin/Folders";
+import Uploads from "./pages/admin/Uploads";
 import Placeholder from "./pages/admin/Placeholder";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
             <Route index element={<AdminDashboard />} />
             <Route path="videos" element={<VideosManagement />} />
             <Route path="folders" element={<Folders />} />
+            <Route path="uploads" element={<Uploads />} />
             <Route path="analytics" element={<Placeholder title="Analytics" description="Advanced analytics and insights" />} />
             <Route path="settings" element={<Placeholder title="Settings" description="Admin settings and configuration" />} />
           </Route>

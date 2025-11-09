@@ -8,6 +8,7 @@ import {
   BarChart3,
   Menu,
   X,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -16,6 +17,7 @@ const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard, end: true },
   { name: "Videos", href: "/admin/videos", icon: Video },
   { name: "Folders", href: "/admin/folders", icon: FolderOpen },
+  { name: "Upload", href: "/admin/uploads", icon: Upload },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];

@@ -12,6 +12,7 @@ import {
   LogOut,
   User,
   Activity,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -25,6 +26,7 @@ const navigation = [
   { name: "Upload", href: "/admin/uploads", icon: Upload },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { name: "Health", href: "/admin/health", icon: Activity },
+  { name: "Logs", href: "/admin/logs", icon: FileText },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 

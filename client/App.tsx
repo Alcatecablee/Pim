@@ -18,6 +18,7 @@ import Placeholder from "./pages/admin/Placeholder";
 import Analytics from "./pages/admin/Analytics";
 import Settings from "./pages/admin/Settings";
 import Health from "./pages/admin/Health";
+import Logs from "./pages/admin/Logs";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="uploads" element={<Uploads />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="health" element={<Health />} />
+            <Route path="logs" element={<Logs />} />
             <Route path="settings" element={<Settings />} />
           </Route>
 

@@ -27,6 +27,7 @@ const navigation = [
   { name: "Upload", href: "/admin/uploads", icon: Upload },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { name: "Webhooks", href: "/admin/webhooks", icon: Webhook },
+  { name: "Reports", href: "/admin/reports", icon: FileText },
   { name: "API Docs", href: "/admin/api-docs", icon: FileText },
   { name: "Health", href: "/admin/health", icon: Activity },
   { name: "Logs", href: "/admin/logs", icon: FileText },

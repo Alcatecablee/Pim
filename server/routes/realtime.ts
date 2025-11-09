@@ -16,8 +16,9 @@ export async function handleGetRealtime(req: Request, res: Response) {
       5000
     );
 
-    if (!response.ok) {
-      throw new Error(`UPnShare API error: ${response.status}`);
+    if (!response || !response.ok) {
+      const status = response?.status || 'no response';
+      throw new Error(`UPnShare API error: ${status}`);
     }
 
     const data = await response.json();

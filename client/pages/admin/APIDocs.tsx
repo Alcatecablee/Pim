@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RateLimitInfo } from "@/components/RateLimitInfo";
 import {
   Code2,
   Copy,
@@ -342,6 +343,10 @@ export default function APIDocs() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* API Testing Interface */}
+      {/* Rate Limit Information */}
+      <RateLimitInfo />
 
       {/* API Testing Interface */}
       <Card>

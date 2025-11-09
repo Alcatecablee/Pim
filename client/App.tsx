@@ -19,6 +19,7 @@ const Folders = lazy(() => import("./pages/admin/Folders"));
 const Uploads = lazy(() => import("./pages/admin/Uploads"));
 const Analytics = lazy(() => import("./pages/admin/Analytics"));
 const Webhooks = lazy(() => import("./pages/admin/Webhooks"));
+const Reports = lazy(() => import("./pages/admin/Reports"));
 const APIDocs = lazy(() => import("./pages/admin/APIDocs"));
 const Settings = lazy(() => import("./pages/admin/Settings"));
 const Health = lazy(() => import("./pages/admin/Health"));
@@ -92,6 +93,14 @@ const App = () => (
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <Webhooks />
+                </Suspense>
+              }
+            />
+            <Route
+              path="reports"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <Reports />
                 </Suspense>
               }
             />

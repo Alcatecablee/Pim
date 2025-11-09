@@ -12,6 +12,7 @@ import {
 } from "./routes/videos";
 import { handleRefreshNow, handleRefreshStatus } from "./routes/refresh";
 import { handleGetRealtime } from "./routes/realtime";
+import { handleGetAdminOverview } from "./routes/admin";
 import { startBackgroundRefresh } from "./utils/background-refresh";
 
 export function createServer() {
@@ -44,6 +45,9 @@ export function createServer() {
 
   // Realtime stats
   app.get("/api/realtime", handleGetRealtime);
+
+  // Admin routes
+  app.get("/api/admin/overview", handleGetAdminOverview);
 
   // Start background refresh on server startup (non-blocking)
   // Schedule it to run after a short delay to not interfere with first request

@@ -1,7 +1,37 @@
-# Fusion Starter - Full-Stack React Application
+# VideoHub - Full-Stack Video Management Platform
+
+## Migration Status
+**Date:** November 9, 2025  
+**Status:** ✅ Migration Complete - Production Ready
+
+Successfully migrated VideoHub from Replit Agent to Replit environment. All features are operational including video management, admin dashboard, authentication, analytics, and TUS resumable uploads.
 
 ## Overview
-Fusion Starter is a production-ready, full-stack React application template designed for a modern development experience. It features React Router 6 in SPA mode, TypeScript, Vite, TailwindCSS, and an integrated Express server. The project aims to provide a robust foundation for building interactive web applications, focusing on video content management, playback, and user engagement, with a strong emphasis on performance, scalability, and an enhanced user experience. Key capabilities include comprehensive video management with upload, tagging, and filtering, an advanced video player with custom controls and analytics, and a playlist management system.
+VideoHub is a production-ready, full-stack React application for video content management and playback. It features React Router 6 in SPA mode, TypeScript, Vite, TailwindCSS, and an integrated Express server. The platform provides comprehensive video management with upload, tagging, and filtering, an advanced video player with custom controls and analytics, playlist management, and a full-featured admin dashboard with Replit Auth authentication.
+
+## Deployment Notes
+
+### Required Environment Variables
+- `UPNSHARE_API_TOKEN` - Required for video fetching and uploads
+- `REPL_ID` - Auto-configured by Replit for authentication
+- `SESSION_SECRET` - Auto-configured by Replit for session security
+- `DATABASE_URL` - Auto-configured by Replit PostgreSQL database
+
+### Optional Environment Variables
+- `ALLOWED_ORIGINS` - Comma-separated list of allowed CORS origins (default: localhost:5000, 127.0.0.1:5000, *.replit.dev)
+  - **Format**: `https://example.com,https://another.com` (whitespace is automatically trimmed)
+  - **Important**: For production deployments on custom domains or *.repl.co, you must set this variable
+- `PING_MESSAGE` - Custom message for the ping endpoint (default: "pong")
+- `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` - Optional Redis caching (fallback to in-memory)
+
+### HTTPS Requirements
+- Session cookies require HTTPS (secure: true flag)
+- Local development: Use HTTPS tunnels or ngrok for testing authentication
+- Production: Replit automatically provides HTTPS
+
+### Known Limitations
+- UPnShare realtime API (viewer count) returns errors - handled gracefully with fallback to 0 viewers
+- This is a known third-party API limitation and does not affect core functionality
 
 ## User Preferences
 I prefer detailed explanations.
@@ -25,6 +55,7 @@ The application is structured into three main parts: `client` (React SPA fronten
 - **Backend**: Express server integrated with Vite dev server, TypeScript, ES modules.
 - **API Communication**: Shared types between client/server ensure type safety.
 - **Development Setup**: Single port development (5000), hot reload for both client and server, API endpoints prefixed with `/api/`.
+- **Authentication**: Replit Auth (OpenID Connect) with support for Google, GitHub, X, Apple, and email/password login. Database-backed sessions with PostgreSQL, automatic token refresh, and protected admin routes.
 - **Performance Optimizations**:
     - **Backend**: Global and adaptive timeouts, parallel folder fetching, per-folder video limits, graceful degradation for individual folder failures, 5-minute TTL caching with stale cache fallback.
     - **Frontend**: Automatic retry logic for network errors, 30-second API call timeout, loading state management, client-side pagination, `useMemo` for efficient filtering.
@@ -32,15 +63,20 @@ The application is structured into three main parts: `client` (React SPA fronten
 - **Playlist Management**: CRUD operations for playlists via REST API, integrated with React Query for optimistic updates.
 - **Analytics Tracking**: Tracks total watch time, completion rate, pause/seek counts, unique viewers, and last watched position. Implemented with a `useAnalytics` hook for session management.
 - **Video Upload**: TUS protocol resumable uploads via `tus-js-client` with features like drag-and-drop, multi-file queue, progress tracking, pause/resume, retries, and folder selection. Supports max 20GB files and common video formats.
+- **Admin Dashboard**: Full-featured admin panel with video management, folder organization, analytics, settings, and upload manager. Protected by Replit Auth.
+- **CORS Security**: Configurable CORS with wildcard support for Replit domains, credentials enabled for trusted origins, automatic whitespace trimming for environment variable parsing.
 - **Production Build**: Separate builds for client SPA, server, and serverless bundle for Vercel deployment. Serverless bundle pre-builds server code into a single CommonJS file for optimized cold starts.
 - **Error Handling**: Comprehensive try-catch blocks and meaningful error messages across the application.
 
 **Feature Specifications:**
 - **Video Display**: 20 videos per page with pagination, automatic tag generation from folder names, tag filtering, and hover preview for thumbnails.
-- **API Routes**: `/api/ping`, `/api/demo`, `/api/videos` (UPNshare integration), `/api/playlists` (CRUD), `/api/analytics` (tracking), `/api/upload/credentials` (TUS upload).
-- **Environment Variables**: `PING_MESSAGE`, `UPNSHARE_API_TOKEN`.
+- **Admin Routes**: `/admin` (dashboard), `/admin/videos` (management), `/admin/folders` (organization), `/admin/uploads` (TUS upload manager), `/admin/analytics`, `/admin/settings`.
+- **API Routes**: 
+  - Public: `/api/ping`, `/api/demo`, `/api/videos`, `/api/playlists`, `/api/analytics`
+  - Protected: `/api/admin/*`, `/api/upload/credentials`
+  - Auth: `/api/login`, `/api/logout`, `/api/callback`, `/api/auth/user`
 - **Path Aliases**: `@/*` for client, `@shared/*` for shared.
-- **Database**: PostgreSQL for playlists and analytics data storage, with proper schemas and indexing.
+- **Database**: PostgreSQL with Drizzle ORM for users, sessions, playlists, and analytics data storage. Proper schemas, indexing, and relationships.
 
 ## External Dependencies
 - **Frontend Framework**: React 18

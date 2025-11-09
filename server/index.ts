@@ -59,8 +59,14 @@ import {
   handleClearLogs,
   handleExportLogs,
 } from "./routes/admin-logs";
+import {
+  handleExportBackup,
+  handleBackupInfo,
+  handleVerifyBackup,
+} from "./routes/admin-backup";
 import { startBackgroundRefresh } from "./utils/background-refresh";
 import { startLogRetentionCleanup } from "./utils/log-retention";
+import { startScheduledBackup } from "./utils/scheduled-backup";
 import { initializeDatabase } from "./utils/database";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { storage } from "./storage";
@@ -211,6 +217,11 @@ export async function createServer() {
   app.delete("/api/admin/logs", isAuthenticated, handleClearLogs);
   app.post("/api/admin/logs/export", isAuthenticated, handleExportLogs);
 
+  // Admin backup routes - Protected with authentication
+  app.get("/api/admin/backup/export", isAuthenticated, handleExportBackup);
+  app.get("/api/admin/backup/info", isAuthenticated, handleBackupInfo);
+  app.post("/api/admin/backup/verify", isAuthenticated, handleVerifyBackup);
+
   // Initialize database schemas on server startup
   initializeDatabase().catch((error) => {
     console.error("❌ Failed to initialize database:", error);
@@ -226,6 +237,11 @@ export async function createServer() {
   setTimeout(() => {
     startLogRetentionCleanup();
   }, 2000);
+
+  // Start scheduled backup (runs every 24 hours by default)
+  setTimeout(() => {
+    startScheduledBackup();
+  }, 3000);
 
   return app;
 }

@@ -6,21 +6,32 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { lazy, Suspense } from "react";
+
 import Index from "./pages/Index";
 import VideoPlayer from "./pages/VideoPlayer";
 import NotFound from "./pages/NotFound";
 import AdminLayout from "./pages/admin/AdminLayout";
-import AdminDashboard from "./pages/admin/Dashboard";
-import VideosManagement from "./pages/admin/Videos";
-import Folders from "./pages/admin/Folders";
-import Uploads from "./pages/admin/Uploads";
-import Placeholder from "./pages/admin/Placeholder";
-import Analytics from "./pages/admin/Analytics";
-import Settings from "./pages/admin/Settings";
-import Health from "./pages/admin/Health";
-import Logs from "./pages/admin/Logs";
+
+const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const VideosManagement = lazy(() => import("./pages/admin/Videos"));
+const Folders = lazy(() => import("./pages/admin/Folders"));
+const Uploads = lazy(() => import("./pages/admin/Uploads"));
+const Analytics = lazy(() => import("./pages/admin/Analytics"));
+const Settings = lazy(() => import("./pages/admin/Settings"));
+const Health = lazy(() => import("./pages/admin/Health"));
+const Logs = lazy(() => import("./pages/admin/Logs"));
 
 const queryClient = new QueryClient();
+
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="text-center">
+      <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <p className="text-muted-foreground">Loading...</p>
+    </div>
+  </div>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -32,16 +43,72 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/video/:id" element={<VideoPlayer />} />
           
-          {/* Admin routes */}
+          {/* Admin routes with lazy loading */}
           <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="videos" element={<VideosManagement />} />
-            <Route path="folders" element={<Folders />} />
-            <Route path="uploads" element={<Uploads />} />
-            <Route path="analytics" element={<Analytics />} />
-            <Route path="health" element={<Health />} />
-            <Route path="logs" element={<Logs />} />
-            <Route path="settings" element={<Settings />} />
+            <Route
+              index
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <AdminDashboard />
+                </Suspense>
+              }
+            />
+            <Route
+              path="videos"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <VideosManagement />
+                </Suspense>
+              }
+            />
+            <Route
+              path="folders"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <Folders />
+                </Suspense>
+              }
+            />
+            <Route
+              path="uploads"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <Uploads />
+                </Suspense>
+              }
+            />
+            <Route
+              path="analytics"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <Analytics />
+                </Suspense>
+              }
+            />
+            <Route
+              path="health"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <Health />
+                </Suspense>
+              }
+            />
+            <Route
+              path="logs"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <Logs />
+                </Suspense>
+              }
+            />
+            <Route
+              path="settings"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <Settings />
+                </Suspense>
+              }
+            />
           </Route>
 
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

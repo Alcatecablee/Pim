@@ -26,6 +26,21 @@ import {
   handleRenameFolder,
 } from "./routes/folder-management";
 import { getUploadCredentials } from "./routes/upload";
+import {
+  getPlaylists,
+  createPlaylist,
+  updatePlaylist,
+  deletePlaylist,
+  addVideoToPlaylist,
+  removeVideoFromPlaylist,
+} from "./routes/playlist";
+import {
+  startSession,
+  updateProgress,
+  endSession,
+  getVideoAnalytics,
+  getEngagementHeatmap,
+} from "./routes/analytics";
 import { startBackgroundRefresh } from "./utils/background-refresh";
 
 export function createServer() {
@@ -74,6 +89,21 @@ export function createServer() {
 
   // Upload routes
   app.get("/api/upload/credentials", getUploadCredentials);
+
+  // Playlist routes
+  app.get("/api/playlists", getPlaylists);
+  app.post("/api/playlists", createPlaylist);
+  app.patch("/api/playlists/:id", updatePlaylist);
+  app.delete("/api/playlists/:id", deletePlaylist);
+  app.post("/api/playlists/:id/videos", addVideoToPlaylist);
+  app.delete("/api/playlists/:id/videos/:videoId", removeVideoFromPlaylist);
+
+  // Analytics routes
+  app.post("/api/analytics/session/start", startSession);
+  app.post("/api/analytics/session/progress", updateProgress);
+  app.post("/api/analytics/session/end", endSession);
+  app.get("/api/analytics/video/:videoId", getVideoAnalytics);
+  app.get("/api/analytics/video/:videoId/heatmap", getEngagementHeatmap);
 
   // Start background refresh on server startup (non-blocking)
   // Schedule it to run after a short delay to not interfere with first request

@@ -1,6 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { Play, Pause, Volume2, VolumeX, Maximize, Settings } from "lucide-react";
+import { Play, Pause, Volume2, VolumeX, Maximize, Settings, PictureInPicture2 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface VideoPlayerControlsProps {
   isPlaying: boolean;
@@ -8,10 +14,13 @@ interface VideoPlayerControlsProps {
   duration: number;
   volume: number;
   isMuted: boolean;
+  playbackSpeed?: number;
   onPlayPause: () => void;
   onSeek: (time: number) => void;
   onVolumeChange: (volume: number) => void;
   onMuteToggle: () => void;
+  onPlaybackSpeedChange?: (speed: number) => void;
+  onPictureInPictureToggle?: () => void;
 }
 
 export function VideoPlayerControls({
@@ -20,10 +29,13 @@ export function VideoPlayerControls({
   duration,
   volume,
   isMuted,
+  playbackSpeed = 1,
   onPlayPause,
   onSeek,
   onVolumeChange,
   onMuteToggle,
+  onPlaybackSpeedChange,
+  onPictureInPictureToggle,
 }: VideoPlayerControlsProps) {
   const [showControls, setShowControls] = useState(true);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
@@ -248,6 +260,39 @@ export function VideoPlayerControls({
 
             {/* Right Controls */}
             <div className="flex items-center gap-1">
+              {/* Playback Speed */}
+              {onPlaybackSpeedChange && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="px-3 py-2 hover:bg-white/20 rounded-full transition-colors text-white text-sm font-medium">
+                      {playbackSpeed}x
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {[0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((speed) => (
+                      <DropdownMenuItem
+                        key={speed}
+                        onClick={() => onPlaybackSpeedChange(speed)}
+                        className={speed === playbackSpeed ? "bg-accent" : ""}
+                      >
+                        {speed === 1 ? "Normal" : `${speed}x`}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              
+              {/* Picture-in-Picture */}
+              {onPictureInPictureToggle && (
+                <button 
+                  onClick={onPictureInPictureToggle}
+                  className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                  title="Picture-in-Picture"
+                >
+                  <PictureInPicture2 className="w-6 h-6 text-white" />
+                </button>
+              )}
+
               <button className="p-2 hover:bg-white/20 rounded-full transition-colors">
                 <Settings className="w-6 h-6 text-white" />
               </button>

@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { VideoPlayerControls } from "@/components/VideoPlayerControls";
+import { useAnalytics } from "@/hooks/use-analytics";
+import { PlaylistManager } from "@/components/PlaylistManager";
 
 export default function VideoPlayer() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +28,9 @@ export default function VideoPlayer() {
   const [volume, setVolume] = useState(100);
   const [isMuted, setIsMuted] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  
+  const analytics = useAnalytics();
 
   // Send command to player
   const sendPlayerCommand = useCallback((command: string, value?: number) => {
@@ -45,6 +50,10 @@ export default function VideoPlayer() {
       if (e.data.playerStatus === 'Ready') {
         setPlayerReady(true);
         if (e.data.duration) setDuration(e.data.duration);
+        // Start analytics session
+        if (id) {
+          analytics.startSession(id);
+        }
         // Auto-play on ready
         setTimeout(() => {
           sendPlayerCommand('play');
@@ -87,17 +96,27 @@ export default function VideoPlayer() {
     return () => window.removeEventListener('message', handleMessage);
   }, [playerOrigin, sendPlayerCommand]);
 
-  // Poll for current time
+  // Poll for current time and update analytics
   useEffect(() => {
     if (!playerReady) return;
 
     const interval = setInterval(() => {
       sendPlayerCommand('getTime');
       sendPlayerCommand('getStatus');
-    }, 500);
+      
+      // Update analytics
+      if (isPlaying && id) {
+        analytics.updateProgress({
+          videoId: id,
+          currentTime,
+          duration,
+          isPlaying,
+        });
+      }
+    }, 1000); // Updated to 1s for analytics
 
     return () => clearInterval(interval);
-  }, [playerReady, sendPlayerCommand]);
+  }, [playerReady, sendPlayerCommand, isPlaying, currentTime, duration, id]);
 
   useEffect(() => {
     const fetchVideo = async () => {
@@ -239,13 +258,33 @@ export default function VideoPlayer() {
                 duration={duration}
                 volume={volume}
                 isMuted={isMuted}
+                playbackSpeed={playbackSpeed}
                 onPlayPause={() => {
+                  const willBePlaying = !isPlaying;
                   sendPlayerCommand(isPlaying ? 'pause' : 'play');
-                  setIsPlaying(!isPlaying);
+                  setIsPlaying(willBePlaying);
+                  
+                  // Track pause event when video is paused (not when resuming)
+                  if (!willBePlaying && id) {
+                    analytics.trackPause({
+                      videoId: id,
+                      currentTime,
+                      duration,
+                      isPlaying: false,
+                    });
+                  }
                 }}
                 onSeek={(time) => {
                   sendPlayerCommand('seek', time);
                   setCurrentTime(time);
+                  if (id) {
+                    analytics.trackSeek({
+                      videoId: id,
+                      currentTime: time,
+                      duration,
+                      isPlaying,
+                    });
+                  }
                 }}
                 onVolumeChange={(vol) => {
                   sendPlayerCommand('volume', vol);
@@ -255,6 +294,22 @@ export default function VideoPlayer() {
                 onMuteToggle={() => {
                   sendPlayerCommand(isMuted ? 'unmute' : 'mute');
                   setIsMuted(!isMuted);
+                }}
+                onPlaybackSpeedChange={(speed) => {
+                  setPlaybackSpeed(speed);
+                  toast.info(`Playback speed: ${speed}x`);
+                  // Note: UPnShare iframe API may not support speed control
+                  // This is for UI indication only
+                }}
+                onPictureInPictureToggle={() => {
+                  if (document.pictureInPictureEnabled && iframeRef.current) {
+                    if (document.pictureInPictureElement) {
+                      document.exitPictureInPicture();
+                    } else {
+                      toast.info("Picture-in-picture mode not fully supported for iframes");
+                      // Modern browsers don't allow PiP for cross-origin iframes
+                    }
+                  }
                 }}
               />
             </div>
@@ -373,7 +428,12 @@ export default function VideoPlayer() {
           </div>
 
           {/* Related Videos Sidebar */}
-          <div className="space-y-3">
+          <div className="space-y-6">
+            {/* Playlist Manager */}
+            <PlaylistManager currentVideoId={id} />
+            
+            <Separator />
+            
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               Related Videos
             </h2>

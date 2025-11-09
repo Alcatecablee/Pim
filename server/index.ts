@@ -19,6 +19,12 @@ import {
   handleMoveVideosToFolder,
   handleBulkDeleteVideos,
 } from "./routes/video-management";
+import {
+  handleGetFolders,
+  handleCreateFolder,
+  handleDeleteFolder,
+  handleRenameFolder,
+} from "./routes/folder-management";
 import { startBackgroundRefresh } from "./utils/background-refresh";
 
 export function createServer() {
@@ -58,6 +64,12 @@ export function createServer() {
   app.patch("/api/admin/videos/:id", handleRenameVideo);
   app.post("/api/admin/videos/move", handleMoveVideosToFolder);
   app.post("/api/admin/videos/bulk-delete", handleBulkDeleteVideos);
+  
+  // Admin folder routes
+  app.get("/api/admin/folders", handleGetFolders);
+  app.post("/api/admin/folders", handleCreateFolder);
+  app.delete("/api/admin/folders/:id", handleDeleteFolder);
+  app.patch("/api/admin/folders/:id", handleRenameFolder);
 
   // Start background refresh on server startup (non-blocking)
   // Schedule it to run after a short delay to not interfere with first request

@@ -81,7 +81,7 @@ export default function Folders() {
         method: "DELETE",
       });
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({ error: response.statusText }));
         throw new Error(error.error || "Failed to delete folder");
       }
       return response.json();
@@ -106,7 +106,7 @@ export default function Folders() {
         body: JSON.stringify({ name }),
       });
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({ error: response.statusText }));
         throw new Error(error.error || "Failed to rename folder");
       }
       return response.json();
@@ -132,7 +132,7 @@ export default function Folders() {
         body: JSON.stringify({ name }),
       });
       if (!response.ok) {
-        const error = await response.json();
+        const error = await response.json().catch(() => ({ error: response.statusText }));
         throw new Error(error.error || "Failed to create folder");
       }
       return response.json();

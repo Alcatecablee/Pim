@@ -5,6 +5,7 @@ import { handleDemo } from "./routes/demo";
 import {
   handleGetVideos,
   handleGetVideosPaginated,
+  handleGetTags,
   handleGetVideoById,
   handleGetStreamUrl,
   handleVideoStream,
@@ -159,6 +160,7 @@ export async function createServer() {
   // Video routes
   app.get("/api/videos", handleGetVideos);
   app.get("/api/videos/paginated", handleGetVideosPaginated);
+  app.get("/api/tags", handleGetTags);
   app.get("/api/videos/:id", handleGetVideoById);
   app.get("/api/videos/:id/stream-url", handleGetStreamUrl);
   app.get("/api/videos/:id/stream", handleVideoStream);

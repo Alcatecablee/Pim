@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { VideosResponse, Video, VideoFolder, RealtimeResponse } from "@shared/api";
 import { VideoCard } from "@/components/VideoCard";
 import { Header } from "@/components/Header";
@@ -8,9 +8,19 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
+interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasMore: boolean;
+}
+
 export default function Index() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [folders, setFolders] = useState<VideoFolder[]>([]);
+  const [allTags, setAllTags] = useState<string[]>([]);
+  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [realtimeStats, setRealtimeStats] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,13 +29,41 @@ export default function Index() {
     return window.innerWidth >= 1024;
   });
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedFolder, setSelectedFolder] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const VIDEOS_PER_PAGE = 20;
 
+  // Fetch all tags on mount
+  useEffect(() => {
+    fetchTags();
+  }, []);
+
+  // Retry tags when videos load successfully but tags are empty
+  useEffect(() => {
+    if (!loading && videos.length > 0 && allTags.length === 0) {
+      console.log('Videos loaded but tags are empty, retrying tags fetch');
+      const timer = setTimeout(() => fetchTags(), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, videos.length, allTags.length]);
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setCurrentPage(1); // Reset to page 1 on search
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch videos whenever filters or pagination changes
   useEffect(() => {
     fetchVideos();
+  }, [currentPage, selectedFolder, debouncedSearch, selectedTag]);
+
+  useEffect(() => {
     fetchRealtimeStats();
 
     // Poll for realtime stats every 30 seconds
@@ -35,6 +73,31 @@ export default function Index() {
 
     return () => clearInterval(interval);
   }, []);
+
+  const fetchTags = async (retryCount = 0) => {
+    const MAX_TAG_RETRIES = 5;
+    const TAG_RETRY_DELAY = 2000; // 2 seconds between retries
+    
+    try {
+      const response = await fetch("/api/tags");
+      if (response.ok) {
+        const data = await response.json();
+        setAllTags(data.tags || []);
+        
+        // If cache is warming and we have no tags yet, retry
+        if (data.cacheWarming && retryCount < MAX_TAG_RETRIES) {
+          console.log(`Tags cache warming, will retry in ${TAG_RETRY_DELAY/1000}s (${retryCount + 1}/${MAX_TAG_RETRIES})`);
+          setTimeout(() => fetchTags(retryCount + 1), TAG_RETRY_DELAY);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching tags:", error);
+      // Retry on error too
+      if (retryCount < MAX_TAG_RETRIES) {
+        setTimeout(() => fetchTags(retryCount + 1), TAG_RETRY_DELAY);
+      }
+    }
+  };
 
   const fetchRealtimeStats = async () => {
     try {
@@ -55,9 +118,9 @@ export default function Index() {
   };
 
   const fetchVideos = async (retryCount = 0) => {
-    const MAX_RETRIES = 3;
-    const RETRY_DELAY = 1500;
-    const REQUEST_TIMEOUT = 20000; // 20 seconds - gives server 15s + 5s buffer
+    const MAX_RETRIES = 2;
+    const RETRY_DELAY = 1000;
+    const REQUEST_TIMEOUT = 10000; // 10 seconds - fast timeout for serverless
 
     try {
       if (retryCount === 0) {
@@ -65,10 +128,28 @@ export default function Index() {
         setError(null);
       }
 
+      // Build query params
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: VIDEOS_PER_PAGE.toString(),
+      });
+      
+      if (selectedFolder !== "all") {
+        params.append("folder", selectedFolder);
+      }
+      
+      if (debouncedSearch) {
+        params.append("q", debouncedSearch);
+      }
+      
+      if (selectedTag) {
+        params.append("tags", selectedTag);
+      }
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
-      const response = await fetch("/api/videos", {
+      const response = await fetch(`/api/videos/paginated?${params}`, {
         signal: controller.signal,
       });
 
@@ -88,10 +169,14 @@ export default function Index() {
         throw new Error(errorMessage);
       }
 
-      const data = (await response.json()) as VideosResponse;
+      const data = await response.json();
       setVideos(data.videos);
-      setFolders(data.folders);
-      toast.success(`Loaded ${data.videos.length} videos successfully`);
+      setFolders(data.folders || folders); // Keep existing folders if not returned
+      setPagination(data.pagination);
+      
+      if (retryCount === 0) {
+        toast.success(`Loaded ${data.videos.length} videos`);
+      }
       setLoading(false);
     } catch (err) {
       const isAbortError =
@@ -103,12 +188,10 @@ export default function Index() {
 
       if (retryCount < MAX_RETRIES && isAbortError) {
         const retryNum = retryCount + 1;
-        toast.info(
-          `Connection issue, retrying... (${retryNum}/${MAX_RETRIES})`,
-        );
+        console.log(`Retrying (${retryNum}/${MAX_RETRIES})...`);
         await new Promise((resolve) =>
           setTimeout(resolve, RETRY_DELAY * retryNum),
-        ); // Increase delay with each retry
+        );
         return fetchVideos(retryCount + 1);
       }
 
@@ -123,52 +206,10 @@ export default function Index() {
     }
   };
 
-  const filteredVideos = useMemo(() => {
-    let filtered = videos;
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (video) =>
-          video.title.toLowerCase().includes(query) ||
-          video.description?.toLowerCase().includes(query),
-      );
-    }
-
-    if (selectedFolder !== "all") {
-      filtered = filtered.filter((video) => video.folder_id === selectedFolder);
-    }
-
-    if (selectedTag) {
-      filtered = filtered.filter((video) => video.tags?.includes(selectedTag));
-    }
-
-    return filtered.sort(
-      (a, b) =>
-        new Date(b.created_at || 0).getTime() -
-        new Date(a.created_at || 0).getTime(),
-    );
-  }, [videos, searchQuery, selectedFolder, selectedTag]);
-
-  const paginatedVideos = useMemo(() => {
-    const startIndex = (currentPage - 1) * VIDEOS_PER_PAGE;
-    const endIndex = startIndex + VIDEOS_PER_PAGE;
-    return filteredVideos.slice(startIndex, endIndex);
-  }, [filteredVideos, currentPage]);
-
-  const totalPages = Math.ceil(filteredVideos.length / VIDEOS_PER_PAGE);
-
-  const allTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    videos.forEach((video) => {
-      video.tags?.forEach((tag) => tagSet.add(tag));
-    });
-    return Array.from(tagSet).sort();
-  }, [videos]);
-
+  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, selectedFolder, selectedTag]);
+  }, [selectedFolder, selectedTag]);
 
   const getFolderById = (folderId: string) => {
     return folders.find((f) => f.id === folderId);
@@ -264,7 +305,7 @@ export default function Index() {
                   </div>
                 )}
 
-                {filteredVideos.length === 0 ? (
+                {videos.length === 0 && !loading ? (
                   <div className="flex flex-col items-center justify-center py-24">
                     <div className="w-32 h-32 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-6">
                       <AlertCircle className="w-16 h-16 text-gray-400 dark:text-gray-600" />
@@ -295,11 +336,11 @@ export default function Index() {
                 ) : (
                   <>
                     {/* Filter Info */}
-                    {(searchQuery || selectedFolder !== "all" || selectedTag) && (
+                    {pagination && (searchQuery || selectedFolder !== "all" || selectedTag) && (
                       <div className="mb-6 flex items-center justify-between">
                         <p className="text-sm text-gray-600 dark:text-gray-400">
-                          {filteredVideos.length}{" "}
-                          {filteredVideos.length === 1 ? "result" : "results"}
+                          {pagination.total}{" "}
+                          {pagination.total === 1 ? "result" : "results"}
                           {searchQuery && ` for "${searchQuery}"`}
                           {selectedFolder !== "all" &&
                             ` in ${getFolderById(selectedFolder)?.name}`}
@@ -320,7 +361,7 @@ export default function Index() {
 
                     {/* Video Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-x-4 gap-y-8">
-                      {paginatedVideos.map((video) => (
+                      {videos.map((video) => (
                         <VideoCard
                           key={video.id}
                           video={video}
@@ -331,7 +372,7 @@ export default function Index() {
                     </div>
 
                     {/* Pagination */}
-                    {totalPages > 1 && (
+                    {pagination && pagination.totalPages > 1 && (
                       <div className="mt-12 flex items-center justify-center gap-2">
                         <Button
                           variant="outline"
@@ -344,14 +385,14 @@ export default function Index() {
                         </Button>
 
                         <div className="flex items-center gap-1">
-                          {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
+                          {Array.from({ length: Math.min(7, pagination.totalPages) }, (_, i) => {
                             let pageNum: number;
-                            if (totalPages <= 7) {
+                            if (pagination.totalPages <= 7) {
                               pageNum = i + 1;
                             } else if (currentPage <= 4) {
                               pageNum = i + 1;
-                            } else if (currentPage >= totalPages - 3) {
-                              pageNum = totalPages - 6 + i;
+                            } else if (currentPage >= pagination.totalPages - 3) {
+                              pageNum = pagination.totalPages - 6 + i;
                             } else {
                               pageNum = currentPage - 3 + i;
                             }
@@ -373,15 +414,15 @@ export default function Index() {
                         <Button
                           variant="outline"
                           size="icon"
-                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                          disabled={currentPage === totalPages}
+                          onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
+                          disabled={currentPage === pagination.totalPages}
                           className="rounded-full"
                         >
                           <ChevronRight className="w-4 h-4" />
                         </Button>
 
                         <span className="ml-4 text-sm text-gray-600 dark:text-gray-400">
-                          Page {currentPage} of {totalPages}
+                          Page {currentPage} of {pagination.totalPages}
                         </span>
                       </div>
                     )}

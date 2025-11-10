@@ -21,6 +21,38 @@ interface CacheEntry {
 let cache: CacheEntry | null = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// Get all unique tags from cached videos
+export const handleGetTags: RequestHandler = async (req, res) => {
+  try {
+    // Try to get tags from cache
+    const cacheData = cache?.data || sharedCache?.data || await getFromRedisCache();
+    
+    if (!cacheData) {
+      // No cache available - trigger background refresh and return empty for now
+      console.log('[handleGetTags] No cache found, triggering background refresh');
+      triggerBackgroundRefresh('tags-cold-start');
+      return res.json({ 
+        tags: [],
+        cacheWarming: true,
+        message: 'Cache is warming up. Tags will be available shortly.'
+      });
+    }
+
+    // Extract all unique tags
+    const tagSet = new Set<string>();
+    cacheData.videos.forEach((video: Video) => {
+      video.tags?.forEach((tag) => tagSet.add(tag));
+    });
+
+    const tags = Array.from(tagSet).sort();
+    
+    return res.json({ tags, cacheWarming: false });
+  } catch (error) {
+    console.error('[handleGetTags] Error:', error);
+    return res.json({ tags: [], cacheWarming: false });
+  }
+};
+
 export const handleGetVideos: RequestHandler = async (req, res) => {
   const startTime = Date.now();
   const GLOBAL_TIMEOUT = 15000; // 15 seconds - be very conservative to avoid Vercel's 30s limit
@@ -367,6 +399,9 @@ export const handleGetVideosPaginated: RequestHandler = async (req, res) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
     const folderId = req.query.folder as string;
+    const searchQuery = (req.query.q as string)?.toLowerCase().trim();
+    const tagsParam = req.query.tags as string;
+    const tags = tagsParam ? tagsParam.split(',').map(t => t.trim()) : [];
 
     if (!API_TOKEN) {
       performanceMonitor.recordError("missing_api_token");
@@ -375,11 +410,28 @@ export const handleGetVideosPaginated: RequestHandler = async (req, res) => {
       });
     }
 
-    // Helper to paginate from full cache
+    // Helper to paginate from full cache with search and tag filtering
     const paginateFromCache = (cacheData: VideosResponse) => {
       let filteredVideos = cacheData.videos;
+      
+      // Filter by folder
       if (folderId) {
         filteredVideos = filteredVideos.filter((v) => v.folder_id === folderId);
+      }
+      
+      // Filter by search query
+      if (searchQuery) {
+        filteredVideos = filteredVideos.filter((v) => 
+          v.title.toLowerCase().includes(searchQuery) ||
+          v.description?.toLowerCase().includes(searchQuery)
+        );
+      }
+      
+      // Filter by tags
+      if (tags.length > 0) {
+        filteredVideos = filteredVideos.filter((v) => 
+          v.tags?.some(tag => tags.includes(tag))
+        );
       }
 
       const startIndex = (page - 1) * limit;

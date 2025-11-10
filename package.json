@@ -23,13 +23,11 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.0.2",
     "@types/connect-pg-simple": "^7.0.3",
     "@types/express-session": "^1.18.2",
     "@types/memoizee": "^0.4.12",
     "@types/passport": "^1.0.17",
     "@types/pg": "^8.15.6",
-    "@types/ws": "^8.18.1",
     "@upstash/redis": "^1.35.6",
     "connect-pg-simple": "^10.0.0",
     "dotenv": "^17.2.1",
@@ -46,7 +44,6 @@
     "pino-pretty": "^13.1.2",
     "rollup-plugin-visualizer": "^6.0.5",
     "tus-js-client": "^4.3.1",
-    "ws": "^8.18.3",
     "zod": "^3.25.76"
   },
   "devDependencies": {

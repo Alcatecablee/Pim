@@ -12,23 +12,12 @@ import {
   HardDrive,
   PieChart as PieChartIcon
 } from "lucide-react";
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { lazy, Suspense } from "react";
+
+const OverviewCharts = lazy(() => import("@/components/admin/OverviewCharts").then(m => ({ default: m.OverviewCharts })));
+const StorageCharts = lazy(() => import("@/components/admin/StorageCharts").then(m => ({ default: m.StorageCharts })));
 
 interface TopVideo {
   videoId: string;

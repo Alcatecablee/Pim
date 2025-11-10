@@ -4,10 +4,18 @@ import { logs } from '../../shared/schema';
 
 // Create Pino logger instance
 const isDevelopment = process.env.NODE_ENV !== 'production';
+// Detect serverless environments (Vercel, Netlify, AWS Lambda) where pino-pretty doesn't work
+const isServerless = Boolean(
+  process.env.VERCEL || 
+  process.env.AWS_LAMBDA_FUNCTION_NAME || 
+  process.env.NETLIFY ||
+  process.env.AWS_EXECUTION_ENV
+);
 
 export const logger = pino({
   level: process.env.LOG_LEVEL || (isDevelopment ? 'debug' : 'info'),
-  transport: isDevelopment
+  // Disable pino-pretty in serverless environments (it requires dynamic module loading)
+  transport: isDevelopment && !isServerless
     ? {
         target: 'pino-pretty',
         options: {

@@ -11,20 +11,13 @@ export async function handleGetRealtime(req: Request, res: Response) {
       return res.status(500).json({ error: 'API token not configured' });
     }
 
-    const response = await fetchWithAuth(
+    const data = await fetchWithAuth(
       'https://upnshare.com/api/v1/video/realtime',
       5000
     );
-
-    if (!response || !response.ok) {
-      const status = response?.status || 'no response';
-      throw new Error(`UPnShare API error: ${status}`);
-    }
-
-    const data = await response.json();
     
     console.log('[handleGetRealtime] Success:', {
-      totalVideos: data.data?.length || 0
+      totalItems: data.data?.length || 0
     });
 
     return res.json(data);

@@ -14,6 +14,7 @@ import {
   Activity,
   FileText,
   Webhook,
+  Database,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -31,6 +32,7 @@ const navigation = [
   { name: "API Docs", href: "/admin/api-docs", icon: FileText },
   { name: "Health", href: "/admin/health", icon: Activity },
   { name: "Logs", href: "/admin/logs", icon: FileText },
+  { name: "Backup", href: "/admin/backup", icon: Database },
   { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 

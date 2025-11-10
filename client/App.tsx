@@ -24,6 +24,7 @@ const APIDocs = lazy(() => import("./pages/admin/APIDocs"));
 const Settings = lazy(() => import("./pages/admin/Settings"));
 const Health = lazy(() => import("./pages/admin/Health"));
 const Logs = lazy(() => import("./pages/admin/Logs"));
+const Backup = lazy(() => import("./pages/admin/Backup"));
 
 const queryClient = new QueryClient();
 
@@ -125,6 +126,14 @@ const App = () => (
               element={
                 <Suspense fallback={<LoadingFallback />}>
                   <Logs />
+                </Suspense>
+              }
+            />
+            <Route
+              path="backup"
+              element={
+                <Suspense fallback={<LoadingFallback />}>
+                  <Backup />
                 </Suspense>
               }
             />

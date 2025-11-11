@@ -19,6 +19,16 @@ interface Folder {
   name: string;
 }
 
+// Known artist names - these will be used to consolidate variations
+const KNOWN_ARTISTS = [
+  "Xoli Mfeka",
+  "Simplypiiper", 
+  "Pipipiper",
+  "Hailee Starr",
+  "Premlly Prem",
+  "Kira",
+];
+
 // Common artist name patterns and aliases
 const ARTIST_ALIASES: Record<string, string> = {
   "xolisile": "Xoli Mfeka",
@@ -83,71 +93,82 @@ async function getAllVideos(): Promise<Video[]> {
   return allVideos;
 }
 
-function extractArtistName(title: string): string | null {
-  // Normalize title
+function extractAllArtistNames(title: string): string[] {
+  const artists: string[] = [];
   const normalized = title.trim();
   
-  // Pattern 1: "Artist Name - Title" or "Artist Name: Title"
-  const dashPattern = /^([^-:]+?)[\s]*[-:]/;
-  const dashMatch = normalized.match(dashPattern);
-  if (dashMatch) {
-    const candidate = dashMatch[1].trim();
-    if (candidate.length > 2 && candidate.length < 50) {
-      return normalizeArtistName(candidate);
+  // Check for known artists in the title (case-insensitive)
+  for (const knownArtist of KNOWN_ARTISTS) {
+    const regex = new RegExp(`\\b${knownArtist.replace(/\s+/g, '\\s+')}\\b`, 'i');
+    if (regex.test(normalized)) {
+      artists.push(knownArtist);
     }
   }
-
-  // Pattern 2: "Artist1 & Artist2" or "Artist1 and Artist2"
-  const andPattern = /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:&|and)\s+/i;
-  const andMatch = normalized.match(andPattern);
-  if (andMatch) {
-    return normalizeArtistName(andMatch[1].trim());
+  
+  // If we found known artists, return them
+  if (artists.length > 0) {
+    return artists;
   }
-
-  // Pattern 3: "Artist1 Vs Artist2" or "Artist1 x Artist2"
-  const vsPattern = /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:Vs|vs|VS|x|X)\s+/i;
-  const vsMatch = normalized.match(vsPattern);
-  if (vsMatch) {
-    return normalizeArtistName(vsMatch[1].trim());
-  }
-
-  // Pattern 4: "Artist1/Artist2" 
-  const slashPattern = /^([^/]+)\/([^/]+)/;
-  const slashMatch = normalized.match(slashPattern);
-  if (slashMatch) {
-    // Take the first artist name
-    const candidate = slashMatch[1].trim();
-    if (candidate.length > 2 && candidate.length < 50) {
-      return normalizeArtistName(candidate);
+  
+  // Otherwise, try to extract artist names using patterns
+  const patterns = [
+    // Pattern 1: "Artist Name - Title" or "Artist Name: Title"
+    /^([^-:]+?)[\s]*[-:]/,
+    // Pattern 2: "Artist1 & Artist2"
+    /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:&|and)\s+/i,
+    // Pattern 3: "Artist1 Vs Artist2" or "Artist1 x Artist2"
+    /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:Vs|vs|VS|x|X)\s+/i,
+    // Pattern 4: "Artist1/Artist2"
+    /^([^/]+)\//,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (match && match[1]) {
+      const candidate = match[1].trim();
+      if (candidate.length > 2 && candidate.length < 50) {
+        const artist = normalizeArtistName(candidate);
+        if (artist && !artists.includes(artist)) {
+          artists.push(artist);
+        }
+      }
     }
   }
-
-  // Pattern 5: Leading capitalized words (likely artist name)
-  const leadingCapsPattern = /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})/;
-  const capsMatch = normalized.match(leadingCapsPattern);
-  if (capsMatch) {
-    const candidate = capsMatch[1].trim();
-    // Only accept if it's between 3-40 characters and doesn't look like a generic title
-    const genericWords = /^(watch|new|hot|sexy|leaked|exclusive|best|top)/i;
-    if (candidate.length >= 3 && candidate.length <= 40 && !genericWords.test(candidate)) {
-      return normalizeArtistName(candidate);
-    }
-  }
-
-  return null;
+  
+  return artists;
 }
 
-function normalizeArtistName(name: string): string {
+function extractArtistName(title: string): string | null {
+  const artists = extractAllArtistNames(title);
+  return artists.length > 0 ? artists[0] : null;
+}
+
+function normalizeArtistName(name: string): string | null {
   const normalized = name.trim().toLowerCase();
   
   // Check if we have an alias mapping
   if (ARTIST_ALIASES[normalized]) {
     return ARTIST_ALIASES[normalized];
   }
+  
+  // Check if this name contains any known artist
+  for (const knownArtist of KNOWN_ARTISTS) {
+    if (normalized.includes(knownArtist.toLowerCase())) {
+      return knownArtist;
+    }
+  }
+  
+  // Filter out generic/common words that aren't artist names
+  const genericWords = /^(watch|new|hot|sexy|leaked|exclusive|best|top|big|booty|mzansi|sandton|based|showing|masturbating|nudes|webcam|porn|video|onlyfans|shower|tease)$/i;
+  const words = name.trim().split(/\s+/);
+  const filteredWords = words.filter(word => !genericWords.test(word));
+  
+  if (filteredWords.length === 0) {
+    return null;
+  }
 
-  // Otherwise, return title-cased version
-  return name
-    .split(/\s+/)
+  // Return title-cased version
+  return filteredWords
     .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(" ");
 }

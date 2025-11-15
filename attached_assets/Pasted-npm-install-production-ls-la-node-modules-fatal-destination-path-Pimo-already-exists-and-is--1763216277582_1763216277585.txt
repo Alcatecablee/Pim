@@ -1,0 +1,130 @@
+npm install --production
+ls -la node_modules
+fatal: destination path 'Pimo' already exists and is not an empty directory.
+npm warn config production Use `--omit=dev` instead.
+
+up to date, audited 1 package in 1s
+
+found 0 vulnerabilities
+ls: cannot access 'node_modules': No such file or directory
+root@server:/home/Alcatec/web/api.server.mzansiporns.com/nodeapp# cd /home/Alcatec/web/api.server.mzansiporns.com/nodeapp
+git clone https://github.com/Alcatecablee/Pimo.git
+npm install --production
+ls -la node_modules
+Cloning into 'Pimo'...
+remote: Enumerating objects: 1383, done.
+remote: Counting objects: 100% (136/136), done.
+remote: Compressing objects: 100% (82/82), done.
+remote: Total 1383 (delta 70), reused 101 (delta 52), pack-reused 1247 (from 1)
+Receiving objects: 100% (1383/1383), 1.17 MiB | 2.71 MiB/s, done.
+Resolving deltas: 100% (869/869), done.
+npm warn config production Use `--omit=dev` instead.
+
+up to date, audited 1 package in 629ms
+
+found 0 vulnerabilities
+ls: cannot access 'node_modules': No such file or directory
+root@server:/home/Alcatec/web/api.server.mzansiporns.com/nodeapp# npm install
+
+up to date, audited 1 package in 1s
+
+found 0 vulnerabilities
+root@server:/home/Alcatec/web/api.server.mzansiporns.com/nodeapp# cd /home/admin/web/api.server.porninblack.com/nodeapp/pimo
+-bash: cd: /home/admin/web/api.server.porninblack.com/nodeapp/pimo: No such file or directory
+root@server:/home/Alcatec/web/api.server.mzansiporns.com/nodeapp# cd /home/admin/web/api.server.porninblack.com/nodeapp/Pimo
+-bash: cd: /home/admin/web/api.server.porninblack.com/nodeapp/Pimo: No such file or directory
+root@server:/home/Alcatec/web/api.server.mzansiporns.com/nodeapp# cd /home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo
+root@server:/home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo# npm install
+npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+npm warn deprecated three-mesh-bvh@0.7.8: Deprecated due to three.js version incompatibility. Please use v0.8.0, instead.
+
+added 627 packages, and audited 628 packages in 44s
+
+91 packages are looking for funding
+  run `npm fund` for details
+
+4 moderate severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+root@server:/home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo# npm build
+Unknown command: "build"
+
+
+Did you mean this?
+  npm run build # run the "build" package script
+To see a list of supported npm commands, run:
+  npm help
+root@server:/home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo# npm start
+
+> start
+> node dist/server/node-build.mjs
+
+node:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/dist/server/node-build.mjs'
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Function._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v22.21.0
+root@server:/home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo# npm run build
+
+# Then start it
+npm start
+
+> build
+> npm run build:client && npm run build:server && npm run build:serverless
+
+
+> build:client
+> vite build
+
+failed to load config from /home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/vite.config.ts
+error during build:
+Error: SUPABASE_URL and SUPABASE_ANON_KEY must be set in Replit secrets
+    at file:///home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/node_modules/.vite-temp/vite.config.ts.timestamp-1763216247694-07b05016a3b93.mjs:3862:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async loadConfigFromBundledFile (file:///home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/node_modules/vite/dist/node/chunks/config.js:36521:12)
+    at async bundleAndLoadConfigFile (file:///home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/node_modules/vite/dist/node/chunks/config.js:36415:17)
+    at async loadConfigFromFile (file:///home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/node_modules/vite/dist/node/chunks/config.js:36382:42)
+    at async resolveConfig (file:///home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/node_modules/vite/dist/node/chunks/config.js:36031:22)
+    at async createBuilder (file:///home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/node_modules/vite/dist/node/chunks/config.js:34494:19)
+    at async CAC.<anonymous> (file:///home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/node_modules/vite/dist/node/cli.js:629:10)
+
+> start
+> node dist/server/node-build.mjs
+
+node:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/dist/server/node-build.mjs'
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Function._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v22.21.0
+root@server:/home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo#

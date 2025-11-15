@@ -1,0 +1,49 @@
+Node.js v22.21.0
+root@server:/home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo# # First, build the application
+npm run build
+
+# Then start it
+npm start
+
+> build
+> npm run build:client && npm run build:server && npm run build:serverless
+
+
+> build:client
+> vite build
+
+failed to load config from /home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/vite.config.ts
+error during build:
+Error: default level:infoVITE_SUPABASE_URL=https://efzdvamelmwjubktjuqv.supabase.co must be included in custom levels
+    at assertDefaultLevelFound (/home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/node_modules/pino/lib/levels.js:194:11)
+    at pino (/home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/node_modules/pino/pino.js:165:3)
+    at file:///home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/node_modules/.vite-temp/vite.config.ts.timestamp-1763214598531-c637bec17afe4.mjs:2622:14
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)
+    at async loadConfigFromBundledFile (file:///home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/node_modules/vite/dist/node/chunks/config.js:36521:12)
+    at async bundleAndLoadConfigFile (file:///home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/node_modules/vite/dist/node/chunks/config.js:36415:17)
+    at async loadConfigFromFile (file:///home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/node_modules/vite/dist/node/chunks/config.js:36382:42)
+    at async resolveConfig (file:///home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/node_modules/vite/dist/node/chunks/config.js:36031:22)
+    at async createBuilder (file:///home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/node_modules/vite/dist/node/chunks/config.js:34494:19)
+
+> start
+> node dist/server/node-build.mjs
+
+node:internal/modules/cjs/loader:1386
+  throw err;
+  ^
+
+Error: Cannot find module '/home/Alcatec/web/api.server.mzansiporns.com/nodeapp/Pimo/dist/server/node-build.mjs'
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Function._load (node:internal/modules/cjs/loader:1192:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: []
+}
+
+Node.js v22.21.0
